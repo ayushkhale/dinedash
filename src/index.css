@@ -1,0 +1,405 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Bricolage Grotesque", sans-serif;
+  --font-outfit: "Bricolage Grotesque", sans-serif;
+
+  /* Enforce only the allowed 10 colors in Tailwind classes */
+  --color-onyx: var(--onyx);
+  --color-carbon-black: var(--carbon-black);
+  --color-dark-garnet: var(--dark-garnet);
+  --color-mahogany-red: var(--mahogany-red);
+  --color-mahogany-red-2: var(--mahogany-red-2);
+  --color-strawberry-red: var(--strawberry-red);
+  --color-silver: var(--silver);
+  --color-dust-grey: var(--dust-grey);
+  --color-white-smoke: var(--white-smoke);
+  --color-white: var(--white);
+
+  /* Map standard Tailwind colors to allowed palette to ensure system-wide compliance */
+  --color-red-50: var(--white-smoke);
+  --color-red-100: var(--white-smoke);
+  --color-red-200: var(--dust-grey);
+  --color-red-300: var(--silver);
+  --color-red-400: var(--silver);
+  --color-red-500: var(--strawberry-red);
+  --color-red-600: var(--mahogany-red-2);
+  --color-red-700: var(--mahogany-red);
+  --color-red-800: var(--dark-garnet);
+  --color-red-900: var(--onyx);
+
+  --color-emerald-50: var(--white-smoke);
+  --color-emerald-100: var(--white-smoke);
+  --color-emerald-200: var(--dust-grey);
+  --color-emerald-300: var(--silver);
+  --color-emerald-400: var(--silver);
+  --color-emerald-500: var(--strawberry-red);
+  --color-emerald-600: var(--mahogany-red-2);
+  --color-emerald-700: var(--mahogany-red);
+  --color-emerald-800: var(--dark-garnet);
+  --color-emerald-900: var(--onyx);
+
+  --color-blue-50: var(--white-smoke);
+  --color-blue-100: var(--white-smoke);
+  --color-blue-200: var(--dust-grey);
+  --color-blue-300: var(--silver);
+  --color-blue-400: var(--silver);
+  --color-blue-500: var(--mahogany-red-2);
+  --color-blue-600: var(--mahogany-red);
+  --color-blue-700: var(--carbon-black);
+  --color-blue-800: var(--onyx);
+  --color-blue-900: var(--onyx);
+
+  --color-amber-50: var(--white-smoke);
+  --color-amber-100: var(--white-smoke);
+  --color-amber-200: var(--dust-grey);
+  --color-amber-300: var(--silver);
+  --color-amber-400: var(--silver);
+  --color-amber-500: var(--mahogany-red-2);
+  --color-amber-600: var(--carbon-black);
+  --color-amber-700: var(--onyx);
+
+  --color-gray-50: var(--white-smoke);
+  --color-gray-100: var(--white-smoke);
+  --color-gray-200: var(--dust-grey);
+  --color-gray-300: var(--silver);
+  --color-gray-400: var(--silver);
+  --color-gray-500: var(--silver);
+  --color-gray-600: var(--carbon-black);
+  --color-gray-700: var(--carbon-black);
+  --color-gray-800: var(--onyx);
+  --color-gray-900: var(--onyx);
+
+  --color-neutral-50: var(--white-smoke);
+  --color-neutral-100: var(--white-smoke);
+  --color-neutral-200: var(--dust-grey);
+  --color-neutral-300: var(--silver);
+  --color-neutral-400: var(--silver);
+  --color-neutral-500: var(--silver);
+  --color-neutral-600: var(--carbon-black);
+  --color-neutral-700: var(--carbon-black);
+  --color-neutral-800: var(--onyx);
+  --color-neutral-900: var(--onyx);
+
+  /* Sharper borders system-wide to remove "AI roundness" */
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+}
+
+/* ── Design Tokens ─────────────────────────────────────────────────── */
+:root {
+  --onyx: #0b090aff;
+  --carbon-black: #161a1dff;
+  --dark-garnet: #660708ff;
+  --mahogany-red: #a4161aff;
+  --mahogany-red-2: #ba181bff;
+  --strawberry-red: #e5383bff;
+  --silver: #b1a7a6ff;
+  --dust-grey: #d3d3d3ff;
+  --white-smoke: #f5f3f4ff;
+  --white: #ffffffff;
+
+  --primary: var(--mahogany-red-2);
+  --primary-hover: var(--mahogany-red);
+  --primary-dark: var(--dark-garnet);
+  --primary-light: var(--white-smoke);
+  --primary-border: var(--dust-grey);
+
+  --text-primary: var(--onyx);
+  --text-secondary: var(--carbon-black);
+  --text-muted: var(--silver);
+
+  --bg-page: var(--white-smoke);
+  --bg-surface: var(--white);
+  --bg-subtle: var(--white-smoke);
+
+  --border: var(--dust-grey);
+  --border-subtle: var(--white-smoke);
+
+  /* Status design tokens aligned to allowed palette */
+  --status-pending-bg: var(--white-smoke);
+  --status-pending-text: var(--carbon-black);
+  --status-pending-border: var(--dust-grey);
+
+  --status-preparing-bg: var(--white-smoke);
+  --status-preparing-text: var(--mahogany-red);
+  --status-preparing-border: var(--silver);
+
+  --status-ready-bg: var(--white-smoke);
+  --status-ready-text: var(--mahogany-red-2);
+  --status-ready-border: var(--silver);
+
+  --status-served-bg: var(--white-smoke);
+  --status-served-text: var(--onyx);
+  --status-served-border: var(--dust-grey);
+
+  --status-cancelled-bg: var(--white-smoke);
+  --status-cancelled-text: var(--strawberry-red);
+  --status-cancelled-border: var(--silver);
+
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 6px;
+}
+
+/* ── Base Reset ────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Consistent input baseline */
+  input, textarea, select {
+    font-family: inherit;
+    font-size: 14px;
+  }
+}
+
+/* ── Shared Form Input Style ───────────────────────────────────────── */
+.dd-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.dd-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(186, 24, 27, 0.08);
+}
+.dd-input:disabled {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* ── Shared Button Styles ──────────────────────────────────────────── */
+.dd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.dd-btn-primary:hover { background: var(--primary-hover); }
+.dd-btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
+.dd-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dd-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #fff;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dd-btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.dd-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #fff;
+  color: var(--primary);
+  border: 1.5px solid var(--primary-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dd-btn-danger:hover { background: var(--primary-light); }
+
+/* ── Status Badges ─────────────────────────────────────────────────── */
+.dd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.dd-badge-pending   { background: var(--status-pending-bg);   color: var(--status-pending-text);   border-color: var(--status-pending-border); }
+.dd-badge-preparing { background: var(--status-preparing-bg); color: var(--status-preparing-text); border-color: var(--status-preparing-border); }
+.dd-badge-ready     { background: var(--status-ready-bg);     color: var(--status-ready-text);     border-color: var(--status-ready-border); }
+.dd-badge-served    { background: var(--status-served-bg);    color: var(--status-served-text);    border-color: var(--status-served-border); }
+.dd-badge-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+
+/* ── Card ──────────────────────────────────────────────────────────── */
+.dd-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.dd-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Modal Backdrop ────────────────────────────────────────────────── */
+.dd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.dd-modal {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* ── Section Header ────────────────────────────────────────────────── */
+.dd-page-header {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dd-page-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.dd-page-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Table Styles ──────────────────────────────────────────────────── */
+.dd-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.dd-table thead th {
+  padding: 12px 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+.dd-table tbody td {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.dd-table tbody tr:hover td {
+  background: #fafafa;
+}
+.dd-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Spinner ───────────────────────────────────────────────────────── */
+.dd-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(186, 24, 27, 0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: dd-spin 0.7s linear infinite;
+}
+@keyframes dd-spin { to { transform: rotate(360deg); } }
+
+/* ── Printer & Ticket Scroll Animations ────────────────────────────── */
+.receipts-animate {
+  transform: translateY(-560px);
+  animation: print-ticket 2.6s cubic-bezier(0.19, 1, 0.22, 1) 0.3s forwards;
+}
+@keyframes print-ticket {
+  0%   { transform: translateY(-560px); }
+  35%  { transform: translateY(-360px); }
+  70%  { transform: translateY(-150px); }
+  100% { transform: translateY(0); }
+}
+
+/* ── QR perforation line ───────────────────────────────────────────── */
+.receipt-qr-split::before {
+  content: '';
+  background: linear-gradient(to right, #ffffff 50%, #f5f4f2 50%);
+  background-size: 16px 4px;
+  height: 4px;
+  width: 90%;
+  display: block;
+  left: 0; right: 0; top: -2px;
+  position: absolute;
+  margin: auto;
+  z-index: 10;
+}
+
+/* ── Fade-in animation ─────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dd-fade-in { animation: fadeInUp 0.2s ease forwards; }

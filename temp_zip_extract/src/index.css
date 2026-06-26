@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Bricolage Grotesque", sans-serif;
+  --font-outfit: "Bricolage Grotesque", sans-serif;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Bricolage Grotesque", sans-serif;
+  }
+
+  body {
+    font-family: "Bricolage Grotesque", sans-serif;
+    background-color: #f5f3f4;
+    color: #161a1d;
+    overflow-x: hidden;
+  }
+}
+
+/* Printer & Ticket Scroll Animations */
+.receipts-animate {
+  transform: translateY(-560px);
+  animation: print-ticket 2.6s cubic-bezier(0.19, 1, 0.22, 1) 0.3s forwards;
+}
+
+@keyframes print-ticket {
+  0% { transform: translateY(-560px); }
+  35% { transform: translateY(-360px); }
+  70% { transform: translateY(-150px); }
+  100% { transform: translateY(0); }
+}
+
+/* Simulated ticket perforation/tear line */
+.receipt-qr-split::before {
+  content: '';
+  background: linear-gradient(to right, #ffffff 50%, #f5f3f4 50%);
+  background-size: 16px 4px;
+  height: 4px;
+  width: 90%;
+  display: block;
+  left: 0;
+  right: 0;
+  top: -2px;
+  position: absolute;
+  margin: auto;
+  z-index: 10;
+}
