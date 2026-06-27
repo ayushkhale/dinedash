@@ -766,7 +766,9 @@ export default function POSWorkspace({ categories, menuItems, tables, fetchOrder
                     const formatted = text.replace(/\n/g, '\r\n') + '\r\n\r\n\r\n\r\n\r\n'
                     await writer.write(new Uint8Array([0x1b, 0x40]))
                     await writer.write(new Uint8Array([0x1b, 0x61, 0]))
+                    await writer.write(new Uint8Array([0x1b, 0x45, 1])) // ESC E 1 - Enable bold text for darker print
                     await writer.write(encoder.encode(formatted))
+                    await writer.write(new Uint8Array([0x1b, 0x45, 0])) // ESC E 0 - Disable bold text
                     writer.releaseLock()
                   } catch (error) {
                     alert('Print failed: ' + error.message)

@@ -248,7 +248,7 @@ export default function MenuWorkspace({ categories, setCategories, menuItems, se
         </div>
       )}
 
-      <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-4">
+      <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-4 min-h-0">
 
         {/* ── Category Tabs ────────────────────────────────────────── */}
         <div className="bg-white border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>

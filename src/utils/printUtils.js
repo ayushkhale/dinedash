@@ -158,6 +158,14 @@ export const handlePrintCard = (table, restaurant) => {
             color: #b1a7a6;
             font-weight: 500;
           }
+          @media print {
+            * {
+              color: #000000 !important;
+              background-color: transparent !important;
+              font-weight: 800 !important;
+              opacity: 1 !important;
+            }
+          }
         </style>
       </head>
       <body>
@@ -420,6 +428,12 @@ export const handlePrintAll = (tables, restaurant) => {
             font-weight: 500;
           }
           @media print {
+            * {
+              color: #000000 !important;
+              background-color: transparent !important;
+              font-weight: 800 !important;
+              opacity: 1 !important;
+            }
             body {
               margin: 0;
               padding: 0;

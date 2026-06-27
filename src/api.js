@@ -1,5 +1,9 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.105:3005';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prisoners-prefers-desired-seminars.trycloudflare.com';
 
+// ─── In-memory access token (never persisted to localStorage) ────────────────
+let memoryAccessToken = null;
+
+// ─── Refresh queue to prevent race conditions ────────────────────────────────
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -14,9 +18,13 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// ─── Core fetch wrapper ──────────────────────────────────────────────────────
 async function customFetch(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
-  
+
+  // Always send cookies for HttpOnly refresh token support
+  options.credentials = 'include';
+
   // Setup headers
   if (!(options.body instanceof FormData)) {
     options.headers = {
@@ -24,23 +32,22 @@ async function customFetch(endpoint, options = {}) {
       ...options.headers,
     };
   } else {
-    options.headers = {
-      ...options.headers,
-    };
+    options.headers = { ...options.headers };
   }
 
-  // Attach memory access token if present
-  if (window.__accessToken) {
-    options.headers['Authorization'] = `Bearer ${window.__accessToken}`;
+  // Attach in-memory access token if present
+  if (memoryAccessToken) {
+    options.headers['Authorization'] = `Bearer ${memoryAccessToken}`;
   }
 
   try {
     const response = await fetch(url, options);
 
-    // Access token expired (403 Forbidden as per integration guide)
-    if (response.status === 403 && !options._retry && !endpoint.startsWith('/api/public')) {
+    // Intercept 401 (Unauthorized) or 403 (Forbidden) — access token expired
+    const isAuthError = response.status === 401 || response.status === 403;
+    if (isAuthError && !options._retry && !endpoint.startsWith('/api/public')) {
       if (isRefreshing) {
-        // Queue this request while refreshing token
+        // Queue this request while the active refresh is in progress
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -55,51 +62,36 @@ async function customFetch(endpoint, options = {}) {
       options._retry = true;
       isRefreshing = true;
 
-      const storedRefreshToken = localStorage.getItem('refreshToken');
-      if (!storedRefreshToken) {
-        handleLogoutRedirect();
-        throw new Error('Session expired');
-      }
-
       try {
-        const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ refreshToken: storedRefreshToken }),
-        });
+        const newAccessToken = await _doRefresh();
+        processQueue(null, newAccessToken);
+        isRefreshing = false;
 
-        if (!refreshRes.ok) {
-          throw new Error('Invalid refresh token');
-        }
-
-        const refreshData = await refreshRes.json();
-        const dataObj = refreshData.data || refreshData;
-        const accessToken = dataObj.accessToken;
-        const newRefreshToken = dataObj.refreshToken;
-
-        // Save tokens
-        window.__accessToken = accessToken;
-        if (newRefreshToken) {
-          localStorage.setItem('refreshToken', newRefreshToken);
-        }
-
-        processQueue(null, accessToken);
-
-        // Retry original request
-        options.headers['Authorization'] = `Bearer ${accessToken}`;
+        // Retry the original failed request with the new token
+        options.headers['Authorization'] = `Bearer ${newAccessToken}`;
         return customFetch(endpoint, options);
       } catch (refreshError) {
         processQueue(refreshError, null);
+        isRefreshing = false;
         handleLogoutRedirect();
         throw refreshError;
-      } finally {
-        isRefreshing = false;
       }
     }
 
-    // Handle error responses (status codes >= 400)
+    // Intercept 402 Payment Required — subscription expired
+    if (response.status === 402) {
+      let payload = {};
+      try { payload = await response.json(); } catch (_) {}
+      if (payload.code === 'SUBSCRIPTION_EXPIRED') {
+        window.dispatchEvent(new CustomEvent('subscription-expired'));
+      }
+      const err = new Error(payload.message || 'Subscription expired.');
+      err.status = 402;
+      err.code = payload.code;
+      throw err;
+    }
+
+    // Handle other error responses (status codes >= 400)
     if (!response.ok) {
       let errorMessage = `API error: ${response.statusText}`;
       try {
@@ -116,7 +108,7 @@ async function customFetch(endpoint, options = {}) {
       throw err;
     }
 
-    // Return parsed json if exists
+    // Return parsed JSON if present
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       return await response.json();
@@ -127,26 +119,68 @@ async function customFetch(endpoint, options = {}) {
   }
 }
 
+// ─── Internal refresh logic (shared by interceptor and startup) ──────────────
+async function _doRefresh() {
+  // Try cookie-based refresh first (withCredentials: true via credentials: 'include').
+  // Also send the fallback refresh token in the body for cross-domain / blocked-cookie scenarios.
+  const fallbackRefreshToken = localStorage.getItem('fallback_refresh_token');
+
+  const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: fallbackRefreshToken }),
+  });
+
+  if (!refreshRes.ok) {
+    throw new Error('Refresh token invalid or expired');
+  }
+
+  const refreshData = await refreshRes.json();
+  const dataObj = refreshData.data || refreshData;
+  const { accessToken, refreshToken: newRefreshToken } = dataObj;
+
+  // Store new access token in memory only
+  memoryAccessToken = accessToken;
+
+  // Rotate the fallback refresh token in localStorage (token rotation)
+  if (newRefreshToken) {
+    localStorage.setItem('fallback_refresh_token', newRefreshToken);
+  }
+
+  return accessToken;
+}
+
+// ─── Logout helper ───────────────────────────────────────────────────────────
 function handleLogoutRedirect() {
-  window.__accessToken = null;
-  localStorage.removeItem('refreshToken');
+  memoryAccessToken = null;
+  localStorage.removeItem('fallback_refresh_token');
   localStorage.removeItem('user');
   window.dispatchEvent(new Event('auth-logout'));
 }
 
+// ─── Public API surface ──────────────────────────────────────────────────────
 export const api = {
-  get: (endpoint, options = {}) => customFetch(endpoint, { ...options, method: 'GET' }),
-  post: (endpoint, body, options = {}) => customFetch(endpoint, {
-    ...options,
-    method: 'POST',
-    body: body instanceof FormData ? body : JSON.stringify(body)
-  }),
-  put: (endpoint, body, options = {}) => customFetch(endpoint, {
-    ...options,
-    method: 'PUT',
-    body: body instanceof FormData ? body : JSON.stringify(body)
-  }),
-  delete: (endpoint, options = {}) => customFetch(endpoint, { ...options, method: 'DELETE' }),
+  get: (endpoint, options = {}) =>
+    customFetch(endpoint, { ...options, method: 'GET' }),
+
+  post: (endpoint, body, options = {}) =>
+    customFetch(endpoint, {
+      ...options,
+      method: 'POST',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+
+  put: (endpoint, body, options = {}) =>
+    customFetch(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+
+  delete: (endpoint, options = {}) =>
+    customFetch(endpoint, { ...options, method: 'DELETE' }),
+
   upload: (file, options = {}) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -158,31 +192,70 @@ export const api = {
     });
   },
 
-  // Explicit refresh session call
-  refreshSession: async () => {
-    const storedRefreshToken = localStorage.getItem('refreshToken');
-    if (!storedRefreshToken) return null;
-    try {
-      const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: storedRefreshToken }),
-      });
-      if (!res.ok) throw new Error();
-      const refreshData = await res.json();
-      const dataObj = refreshData.data || refreshData;
-      const accessToken = dataObj.accessToken;
-      const newRefreshToken = dataObj.refreshToken;
-      window.__accessToken = accessToken;
-      if (newRefreshToken) {
-        localStorage.setItem('refreshToken', newRefreshToken);
-      }
-      return refreshData;
-    } catch (e) {
-      handleLogoutRedirect();
-      return null;
+  /**
+   * loginUser — stores access token in memory and fallback refresh token in
+   * localStorage. Called from LoginPage after a successful /api/auth/login.
+   */
+  loginUser: (accessToken, refreshToken, user) => {
+    memoryAccessToken = accessToken;
+    if (refreshToken) {
+      localStorage.setItem('fallback_refresh_token', refreshToken);
     }
-  }
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+  },
+
+  /**
+   * logoutUser — invalidates the server-side session, clears all local state
+   * and redirects to /login.
+   */
+  logoutUser: async () => {
+    try {
+      await customFetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      handleLogoutRedirect();
+      window.location.href = '/login';
+    }
+  },
+
+  /**
+   * checkSessionPersistence — called on app startup to silently restore a
+   * session if a valid refresh token exists (either via HttpOnly cookie or
+   * localStorage fallback). Returns true if session was restored.
+   */
+  checkSessionPersistence: async () => {
+    const hasFallbackToken = !!localStorage.getItem('fallback_refresh_token');
+
+    // No local indicator of a prior session — skip the network call
+    if (!hasFallbackToken) {
+      // Still attempt if the browser might have an HttpOnly cookie;
+      // but guard with a simple flag to avoid an unnecessary 401 on first load.
+      return false;
+    }
+
+    try {
+      await _doRefresh();
+      return true;
+    } catch (err) {
+      console.warn('No active persistent session found.');
+      handleLogoutRedirect();
+      return false;
+    }
+  },
+
+  /** @deprecated Use checkSessionPersistence instead */
+  refreshSession: async () => {
+    return api.checkSessionPersistence();
+  },
+
+  /** Exposes the current in-memory access token (read-only). */
+  get accessToken() {
+    return memoryAccessToken;
+  },
 };
 
 export default api;

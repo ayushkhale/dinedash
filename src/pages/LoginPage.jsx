@@ -34,16 +34,15 @@ export default function LoginPage() {
         email: form.email,
         password: form.password
       })
-      const resData = response.data || response || {}
-      const accessToken = resData.accessToken || resData.data?.accessToken
-      const refreshToken = resData.refreshToken || resData.data?.refreshToken
-      const user = resData.user || resData.data?.user
 
-      window.__accessToken = accessToken
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken)
-      }
-      localStorage.setItem('user', JSON.stringify(user))
+      // Support both { data: { accessToken } } and flat { accessToken } shapes
+      const resData = response?.data ?? response ?? {}
+      const accessToken = resData.accessToken
+      const refreshToken = resData.refreshToken
+      const user = resData.user
+
+      // Store access token in memory; fallback refresh token in localStorage
+      api.loginUser(accessToken, refreshToken, user)
 
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', form.email)

@@ -170,7 +170,9 @@
   }
 
   /* Consistent input baseline */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     font-family: inherit;
     font-size: 14px;
   }
@@ -189,10 +191,12 @@
   transition: border-color 0.15s, box-shadow 0.15s;
   outline: none;
 }
+
 .dd-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(186, 24, 27, 0.08);
 }
+
 .dd-input:disabled {
   background: var(--bg-subtle);
   color: var(--text-muted);
@@ -214,9 +218,20 @@
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
 }
-.dd-btn-primary:hover { background: var(--primary-hover); }
-.dd-btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
-.dd-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dd-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.dd-btn-primary:active {
+  background: var(--primary-dark);
+  transform: scale(0.98);
+}
+
+.dd-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .dd-btn-secondary {
   display: inline-flex;
@@ -232,6 +247,7 @@
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
+
 .dd-btn-secondary:hover {
   border-color: var(--primary);
   color: var(--primary);
@@ -252,7 +268,10 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.dd-btn-danger:hover { background: var(--primary-light); }
+
+.dd-btn-danger:hover {
+  background: var(--primary-light);
+}
 
 /* ── Status Badges ─────────────────────────────────────────────────── */
 .dd-badge {
@@ -265,11 +284,36 @@
   letter-spacing: 0.02em;
   border: 1px solid transparent;
 }
-.dd-badge-pending   { background: var(--status-pending-bg);   color: var(--status-pending-text);   border-color: var(--status-pending-border); }
-.dd-badge-preparing { background: var(--status-preparing-bg); color: var(--status-preparing-text); border-color: var(--status-preparing-border); }
-.dd-badge-ready     { background: var(--status-ready-bg);     color: var(--status-ready-text);     border-color: var(--status-ready-border); }
-.dd-badge-served    { background: var(--status-served-bg);    color: var(--status-served-text);    border-color: var(--status-served-border); }
-.dd-badge-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+
+.dd-badge-pending {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
+  border-color: var(--status-pending-border);
+}
+
+.dd-badge-preparing {
+  background: var(--status-preparing-bg);
+  color: var(--status-preparing-text);
+  border-color: var(--status-preparing-border);
+}
+
+.dd-badge-ready {
+  background: var(--status-ready-bg);
+  color: var(--status-ready-text);
+  border-color: var(--status-ready-border);
+}
+
+.dd-badge-served {
+  background: var(--status-served-bg);
+  color: var(--status-served-text);
+  border-color: var(--status-served-border);
+}
+
+.dd-badge-cancelled {
+  background: var(--status-cancelled-bg);
+  color: var(--status-cancelled-text);
+  border-color: var(--status-cancelled-border);
+}
 
 /* ── Card ──────────────────────────────────────────────────────────── */
 .dd-card {
@@ -278,6 +322,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
+
 .dd-card-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
@@ -299,6 +344,7 @@
   justify-content: center;
   padding: 16px;
 }
+
 .dd-modal {
   background: #fff;
   border-radius: var(--radius-xl);
@@ -319,12 +365,14 @@
   align-items: center;
   justify-content: space-between;
 }
+
 .dd-page-title {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
 }
+
 .dd-page-subtitle {
   font-size: 13px;
   color: var(--text-muted);
@@ -337,6 +385,7 @@
   border-collapse: collapse;
   text-align: left;
 }
+
 .dd-table thead th {
   padding: 12px 20px;
   font-size: 11px;
@@ -347,15 +396,18 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg-subtle);
 }
+
 .dd-table tbody td {
   padding: 14px 20px;
   font-size: 13px;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-subtle);
 }
+
 .dd-table tbody tr:hover td {
   background: #fafafa;
 }
+
 .dd-table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -369,18 +421,35 @@
   border-radius: 50%;
   animation: dd-spin 0.7s linear infinite;
 }
-@keyframes dd-spin { to { transform: rotate(360deg); } }
+
+@keyframes dd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* ── Printer & Ticket Scroll Animations ────────────────────────────── */
 .receipts-animate {
   transform: translateY(-560px);
   animation: print-ticket 2.6s cubic-bezier(0.19, 1, 0.22, 1) 0.3s forwards;
 }
+
 @keyframes print-ticket {
-  0%   { transform: translateY(-560px); }
-  35%  { transform: translateY(-360px); }
-  70%  { transform: translateY(-150px); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(-560px);
+  }
+
+  35% {
+    transform: translateY(-360px);
+  }
+
+  70% {
+    transform: translateY(-150px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
 }
 
 /* ── QR perforation line ───────────────────────────────────────────── */
@@ -391,7 +460,9 @@
   height: 4px;
   width: 90%;
   display: block;
-  left: 0; right: 0; top: -2px;
+  left: 0;
+  right: 0;
+  top: -2px;
   position: absolute;
   margin: auto;
   z-index: 10;
@@ -399,7 +470,26 @@
 
 /* ── Fade-in animation ─────────────────────────────────────────────── */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.dd-fade-in { animation: fadeInUp 0.2s ease forwards; }
+
+.dd-fade-in {
+  animation: fadeInUp 0.2s ease forwards;
+}
+
+@media print {
+  * {
+    color: #000000 !important;
+    background-color: transparent !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+  }
+}

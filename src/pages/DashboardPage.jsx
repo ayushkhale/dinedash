@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../api'
 
 // Custom Hooks & Utilities
@@ -15,9 +15,11 @@ import OrdersWorkspace from '../components/OrdersWorkspace'
 import KitchenWorkspace from '../components/KitchenWorkspace'
 import PromotionsWorkspace from '../components/PromotionsWorkspace'
 import SettingsWorkspace from '../components/SettingsWorkspace'
+import SubscriptionWorkspace from '../components/SubscriptionWorkspace'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   // User state
   const [user, setUser] = useState(() => {
@@ -29,9 +31,15 @@ export default function DashboardPage() {
   })
 
   const isOwner = user?.role === 'OWNER'
-  
-  // Tab state
+
+  // Read ?tab= and ?billing= query params set by subscription-expired redirect
+  const searchParams = new URLSearchParams(location.search)
+  const tabFromUrl = searchParams.get('tab')
+  const openBillingFromUrl = searchParams.get('billing') === '1'
+
+  // Tab state — honour URL param on first render
   const [activeTab, setActiveTab] = useState(() => {
+    if (tabFromUrl) return tabFromUrl
     return isOwner ? 'Overview' : 'Kitchen'
   })
 
@@ -116,7 +124,8 @@ export default function DashboardPage() {
   useRestaurantSocket({
     user,
     setOrders,
-    setWaiterCalls
+    setWaiterCalls,
+    setTables
   })
 
   // Fetch restaurant info on mount
@@ -160,16 +169,9 @@ export default function DashboardPage() {
 
   const handleSignOut = async () => {
     if (confirm('Are you sure you want to sign out?')) {
-      try {
-        await api.post('/api/auth/logout')
-      } catch (err) {
-        console.error('Failed to log out from API:', err)
-      } finally {
-        window.__accessToken = null
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
-        navigate('/login')
-      }
+      // api.logoutUser() invalidates the session on the server,
+      // clears the HttpOnly cookie, wipes local state, and redirects to /login
+      await api.logoutUser()
     }
   }
 
@@ -218,8 +220,16 @@ export default function DashboardPage() {
         return <KitchenWorkspace orders={orders} fetchOrders={fetchOrders} />
       case 'Promotions':
         return <PromotionsWorkspace />
+      case 'Subscription':
+        return <SubscriptionWorkspace user={user} />
       case 'Settings':
-        return <SettingsWorkspace user={user} onUserUpdate={(updated) => setUser(updated)} onRestaurantUpdate={fetchRestaurant} />
+        return (
+          <SettingsWorkspace
+            user={user}
+            onUserUpdate={(updated) => setUser(updated)}
+            onRestaurantUpdate={fetchRestaurant}
+          />
+        )
       default:
         return (
           <div className="p-8 flex-1 flex flex-col">

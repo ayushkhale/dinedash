@@ -9,10 +9,10 @@ import api from './api'
 
 // Route helper to only allow authenticated users
 function ProtectedRoute({ children }) {
-  const hasAccessToken = !!window.__accessToken
-  const hasRefreshToken = !!localStorage.getItem('refreshToken')
+  const hasAccessToken = !!api.accessToken
+  const hasFallbackToken = !!localStorage.getItem('fallback_refresh_token')
 
-  if (!hasAccessToken && !hasRefreshToken) {
+  if (!hasAccessToken && !hasFallbackToken) {
     return <Navigate to="/login" replace />
   }
   return children
@@ -20,7 +20,7 @@ function ProtectedRoute({ children }) {
 
 // Route helper to prevent authenticated users from visiting guest pages
 function PublicRoute({ children }) {
-  const hasAccessToken = !!window.__accessToken
+  const hasAccessToken = !!api.accessToken
   if (hasAccessToken) {
     return <Navigate to="/dashboard" replace />
   }
@@ -32,13 +32,12 @@ function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedRefreshToken = localStorage.getItem('refreshToken')
-      if (storedRefreshToken) {
-        try {
-          await api.refreshSession()
-        } catch (e) {
-          console.error("Failed to restore session on boot:", e)
-        }
+      try {
+        // Silently attempt to restore a persistent session using
+        // the HttpOnly cookie (or fallback_refresh_token in localStorage)
+        await api.checkSessionPersistence()
+      } catch (e) {
+        console.error('Failed to restore session on boot:', e)
       }
       setLoading(false)
     }
@@ -51,9 +50,16 @@ function App() {
       }
     }
 
+    // Redirect to the Subscription tab when the API fires a 402
+    const handleSubscriptionExpired = () => {
+      window.location.href = '/dashboard?tab=Subscription'
+    }
+
     window.addEventListener('auth-logout', handleAuthLogout)
+    window.addEventListener('subscription-expired', handleSubscriptionExpired)
     return () => {
       window.removeEventListener('auth-logout', handleAuthLogout)
+      window.removeEventListener('subscription-expired', handleSubscriptionExpired)
     }
   }, [])
 

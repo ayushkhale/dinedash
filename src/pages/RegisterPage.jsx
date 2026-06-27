@@ -159,16 +159,11 @@ export default function RegisterPage() {
           email,
           password: details.owner_password
         })
-        const resData = loginRes.data || loginRes || {}
-        const accessToken = resData.accessToken || resData.data?.accessToken
-        const refreshToken = resData.refreshToken || resData.data?.refreshToken
-        const user = resData.user || resData.data?.user
+        const resData = loginRes?.data ?? loginRes ?? {}
+        const { accessToken, refreshToken, user } = resData
 
-        window.__accessToken = accessToken
-        if (refreshToken) {
-          localStorage.setItem('refreshToken', refreshToken)
-        }
-        localStorage.setItem('user', JSON.stringify(user))
+        // Store access token in memory; fallback refresh token in localStorage
+        api.loginUser(accessToken, refreshToken, user)
 
         // Redirect directly to dashboard
         navigate('/dashboard')

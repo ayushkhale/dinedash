@@ -204,7 +204,7 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
         </div>
       )}
 
-      <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5">
+      <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5 min-h-0">
 
         {/* ── Table Grid ──────────────────────────────────────────── */}
         {loading ? (

@@ -13,6 +13,6 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
-    https: true
+    https: false
   }
 })

@@ -10,19 +10,27 @@ import {
   Tag,
   Settings,
   LogOut,
-  ShoppingCart
+  ShoppingCart,
 } from 'lucide-react'
 
+// Crown icon (inline SVG — no lucide equivalent)
+const CrownIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M3 18h18v2H3v-2zm0-2l3-8 4.5 4L12 4l1.5 8L18 8l3 8H3z" />
+  </svg>
+)
+
 const Icons = {
-  Overview: () => <LayoutDashboard size={18} />,
-  POS: () => <ShoppingCart size={18} />,
-  Menu: () => <UtensilsCrossed size={18} />,
-  Tables: () => <QrCode size={18} />,
-  Orders: () => <ClipboardList size={18} />,
-  Kitchen: () => <ChefHat size={18} />,
-  Promotions: () => <Tag size={18} />,
-  Settings: () => <Settings size={18} />,
-  SignOut: () => <LogOut size={15} />
+  Overview:     () => <LayoutDashboard size={18} />,
+  POS:          () => <ShoppingCart size={18} />,
+  Menu:         () => <UtensilsCrossed size={18} />,
+  Tables:       () => <QrCode size={18} />,
+  Orders:       () => <ClipboardList size={18} />,
+  Kitchen:      () => <ChefHat size={18} />,
+  Promotions:   () => <Tag size={18} />,
+  Subscription: () => <CrownIcon size={18} />,
+  Settings:     () => <Settings size={18} />,
+  SignOut:      () => <LogOut size={15} />,
 }
 
 export default function DashboardLayout({ user, restaurant, activeTab, setActiveTab, waiterCalls, handleSignOut, children }) {
@@ -31,18 +39,19 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
 
   const navItems = [
     { name: 'Overview',      Icon: Icons.Overview },
-    { name: 'POS',           Icon: Icons.POS },
-    { name: 'Menu',          Icon: Icons.Menu,       ownerOnly: true },
-    { name: 'Tables & QR',   Icon: Icons.Tables,     ownerOnly: true },
-    { name: 'Orders',        Icon: Icons.Orders },
+    { name: 'POS',           Icon: Icons.POS,          ownerOnly: true },
+    { name: 'Menu',          Icon: Icons.Menu,          ownerOnly: true },
+    { name: 'Tables & QR',   Icon: Icons.Tables,        ownerOnly: true },
+    { name: 'Orders',        Icon: Icons.Orders,        ownerOnly: true },
     { name: 'Kitchen',       Icon: Icons.Kitchen },
-    { name: 'Promotions',    Icon: Icons.Promotions, ownerOnly: true },
+    { name: 'Promotions',    Icon: Icons.Promotions,    ownerOnly: true },
+    { name: 'Subscription',  Icon: Icons.Subscription,  ownerOnly: true, isGold: true },
     { name: 'Settings',      Icon: Icons.Settings },
   ].filter(item => !item.ownerOnly || isOwner)
 
   return (
     <div className="h-screen flex overflow-hidden antialiased" style={{ backgroundColor: 'var(--bg-page)' }}>
-      {/* Sidebar Backdrop (only visible on mobile/tablet when open) */}
+      {/* Sidebar Backdrop (mobile) */}
       {sidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/40 z-40 transition-opacity"
@@ -50,7 +59,7 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
         />
       )}
 
-      {/* ── SIDEBAR ─────────────────────────────────────────────────── */}
+      {/* ── SIDEBAR ────────────────────────────────────────────────────── */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-56 bg-white flex flex-col justify-between shrink-0 border-r transition-transform duration-300 ease-in-out
         lg:static lg:translate-x-0
@@ -82,19 +91,51 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
 
           {/* Navigation */}
           <nav className="p-3 space-y-0.5">
-            {navItems.map(({ name, Icon }) => {
+            {navItems.map(({ name, Icon, isGold }) => {
               const isActive = activeTab === name
               const hasBadge = name === 'Orders' && waiterCalls.length > 0
+
+              // Gold Subscription button
+              if (isGold) {
+                return (
+                  <button
+                    key={name}
+                    onClick={() => { setActiveTab(name); setSidebarOpen(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer relative"
+                    style={isActive ? {
+                      background: '#ba181b',
+                      color: '#fff',
+                      boxShadow: '0 2px 10px rgba(186,24,27,0.25)',
+                    } : {
+                      background: '#fff5f5',
+                      color: '#ba181b',
+                      border: '1px solid #f5c6c6',
+                    }}
+                  >
+                    <span style={{ color: isActive ? '#fff' : '#ba181b' }}>
+                      <Icon />
+                    </span>
+                    <span>{name}</span>
+                    {/* PRO badge */}
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: '8px', fontWeight: 800,
+                      padding: '1px 5px', borderRadius: '4px',
+                      background: isActive ? 'rgba(255,255,255,0.2)' : '#fde8e8',
+                      color: isActive ? '#fff' : '#ba181b',
+                      letterSpacing: '0.06em', textTransform: 'uppercase',
+                    }}>PRO</span>
+                  </button>
+                )
+              }
+
               return (
                 <button
                   key={name}
-                  onClick={() => {
-                    setActiveTab(name)
-                    setSidebarOpen(false)
-                  }}
+                  onClick={() => { setActiveTab(name); setSidebarOpen(false) }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer relative ${
                     isActive
-                       ? 'bg-[#ba181b]/10 text-[#ba181b] font-semibold'
+                      ? 'bg-[#ba181b]/10 text-[#ba181b] font-semibold'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
@@ -126,7 +167,7 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT AREA ────────────────────────────────────────── */}
+      {/* ── MAIN CONTENT AREA ─────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Top Bar */}
         <div className="lg:hidden h-14 bg-white border-b flex items-center justify-between px-4 shrink-0" style={{ borderColor: 'var(--border)' }}>

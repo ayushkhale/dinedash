@@ -1,0 +1,755 @@
+﻿diff --git a/src/components/OrdersWorkspace.jsx b/src/components/OrdersWorkspace.jsx
+index e2120cc..e6f0df2 100644
+--- a/src/components/OrdersWorkspace.jsx
++++ b/src/components/OrdersWorkspace.jsx
+@@ -1,4 +1,4 @@
+-import { useState } from 'react'
++import { useState, useEffect } from 'react'
+ import { RefreshCw, Bell, Printer, Check, Eye, X, Receipt } from 'lucide-react'
+ 
+ // ΓöÇΓöÇ SVG Icons replaced by Lucide ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+@@ -42,6 +42,64 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+   const [orderDateFilter, setOrderDateFilter] = useState('')
+   const [orderTableFilter, setOrderTableFilter] = useState('ALL')
+   const [billPreviewOrder, setBillPreviewOrder] = useState(null)
++  const [printMode, setPrintMode] = useState('individual')
++  const [sessionDetails, setSessionDetails] = useState(null)
++  const [loadingSession, setLoadingSession] = useState(false)
++  const [sessions, setSessions] = useState([])
++  const [loadingSessions, setLoadingSessions] = useState(false)
++
++  const fetchSessions = async () => {
++    setLoadingSessions(true)
++    try {
++      const api = (await import('../api')).default
++      const res = await api.get('/api/orders/sessions')
++      setSessions(res.data || res || [])
++    } catch (err) {
++      console.error('Failed to fetch sessions:', err)
++    } finally {
++      setLoadingSessions(false)
++    }
++  }
++
++  useEffect(() => {
++    fetchSessions()
++  }, [orders])
++
++  useEffect(() => {
++    if (!billPreviewOrder) {
++      setSessionDetails(null)
++      setPrintMode('individual')
++      return
++    }
++
++    const tableId = billPreviewOrder.table_id || billPreviewOrder.RestaurantTable?.id
++    const isDineIn = billPreviewOrder.order_type !== 'PARCEL' && billPreviewOrder.order_type !== 'TAKEAWAY'
++
++    if (isDineIn && tableId) {
++      const fetchSession = async () => {
++        setLoadingSession(true)
++        try {
++          const api = (await import('../api')).default
++          const res = await api.get('/api/orders/sessions')
++          const sessions = res.data || res || []
++          const matchedSession = sessions.find(s => s.table_id === tableId)
++          if (matchedSession) {
++            setSessionDetails(matchedSession)
++            if (matchedSession.orders && matchedSession.orders.length > 1) {
++              setPrintMode('session')
++            }
++          }
++        } catch (err) {
++          console.error('Failed to fetch session details for printing:', err)
++        } finally {
++          setLoadingSession(false)
++        }
++      }
++      fetchSession()
++    } else {
++      setPrintMode('individual')
++    }
++  }, [billPreviewOrder])
+ 
+   const getMinutesAgo = (createdAt) => {
+     const diffMs = new Date() - new Date(createdAt)
+@@ -65,27 +123,30 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+     }
+   }
+ 
+-  // Payment Received: mark SERVED + PAID + open bill preview + auto-clear table session
++  // Payment Received: mark SERVED + PAID for the whole session + open bill preview
+   const handlePaymentReceived = async (ord) => {
+     try {
+       const api = (await import('../api')).default
++
++      // Mark this order as SERVED first
+       await api.put(`/api/orders/${ord.id}/status`, { status: 'SERVED' })
+-      await api.put(`/api/orders/${ord.id}/payment`, { payment_status: 'PAID' })
++
++      const tableId = ord.table_id || ord.RestaurantTable?.id
++
++      if (tableId && ord.order_type !== 'PARCEL' && ord.order_type !== 'TAKEAWAY') {
++        // Dine-in: pay the whole session in one call ΓÇö marks ALL session orders as PAID
++        // and auto-vacates the table (replaces both the per-order payment + separate clear call)
++        await api.put(`/api/tables/${tableId}/pay-session`)
++      } else {
++        // Parcel / takeaway: no session to settle, fall back to per-order payment
++        await api.put(`/api/orders/${ord.id}/payment`, { payment_status: 'PAID' })
++      }
++
+       await fetchOrders()
+       if (selectedOrder?.id === ord.id) {
+         setSelectedOrder(prev => ({ ...prev, status: 'SERVED', payment_status: 'PAID' }))
+       }
+       setBillPreviewOrder({ ...ord, status: 'SERVED', payment_status: 'PAID' })
+-
+-      // Auto-clear the table session if this is a dine-in order
+-      const tableId = ord.table_id || ord.RestaurantTable?.id
+-      if (tableId && ord.order_type !== 'PARCEL' && ord.order_type !== 'TAKEAWAY') {
+-        try {
+-          await api.post(`/api/tables/${tableId}/clear`)
+-        } catch (_) {
+-          // Silently ignore ΓÇö table may already be vacant or backend handles it
+-        }
+-      }
+     } catch (err) {
+       alert(err.message || 'Failed to process payment.')
+     }
+@@ -141,6 +202,73 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+ 
+   const hasActiveFilters = orderFilter !== 'ALL' || orderDateFilter || orderTableFilter !== 'ALL'
+ 
++  const groupedRows = []
++  const groupedOrderIds = new Set()
++
++  // First, group orders by active sessions from the backend
++  sessions.forEach(session => {
++    const sessionOrderIds = session.orders?.map(o => o.id) || []
++    if (sessionOrderIds.length === 0) return
++
++    // Find all full order objects matching these IDs in filteredOrders
++    const sessionOrdersInFiltered = filteredOrders.filter(o => sessionOrderIds.includes(o.id))
++    if (sessionOrdersInFiltered.length === 0) return
++
++    // Sort matching orders by created_at ascending
++    sessionOrdersInFiltered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
++
++    const totalAmount = session.totals?.total_amount || sessionOrdersInFiltered.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0)
++    const latestOrder = sessionOrdersInFiltered[sessionOrdersInFiltered.length - 1]
++    const firstOrder = sessionOrdersInFiltered[0]
++
++    groupedRows.push({
++      type: 'session',
++      key: `session-${session.table_id || session.table_number}`,
++      orders: sessionOrdersInFiltered,
++      table: { id: session.table_id, table_number: session.table_number },
++      table_id: session.table_id,
++      table_number: session.table_number,
++      order_type: 'DINE_IN',
++      customer_name: sessionOrdersInFiltered.map(o => o.customer_name).filter((v, i, a) => a.indexOf(v) === i).join(', '),
++      created_at: firstOrder.created_at,
++      payment_status: 'UNPAID',
++      status: latestOrder.status,
++      total_amount: totalAmount
++    })
++
++    // Track which order IDs have been grouped
++    sessionOrderIds.forEach(id => {
++      groupedOrderIds.add(id)
++    })
++  })
++
++  // For any orders in filteredOrders that were not grouped into active sessions (e.g. parcels, takeaways, or paid orders):
++  filteredOrders.forEach(order => {
++    if (groupedOrderIds.has(order.id)) return
++
++    groupedRows.push({
++      type: 'individual',
++      key: `individual-${order.id}`,
++      orders: [order],
++      table: order.RestaurantTable,
++      order_type: order.order_type,
++      customer_name: order.customer_name,
++      created_at: order.created_at,
++      payment_status: order.payment_status,
++      status: order.status,
++      total_amount: parseFloat(order.total_amount || 0)
++    })
++  })
++
++  // Sort groupedRows by the created_at of their latest order descending
++  groupedRows.sort((a, b) => {
++    const getLatestTime = (row) => {
++      const times = row.orders.map(o => new Date(o.created_at).getTime())
++      return Math.max(...times)
++    }
++    return getLatestTime(b) - getLatestTime(a)
++  })
++
+   return (
+     <>
+       {/* ΓöÇΓöÇ Page Header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+@@ -260,7 +388,7 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+               <tbody>
+                 {loading ? (
+                   <tr><td colSpan="9" className="py-16 text-center text-sm text-gray-400">Loading orders...</td></tr>
+-                ) : filteredOrders.length === 0 ? (
++                ) : groupedRows.length === 0 ? (
+                   <tr>
+                     <td colSpan="9" className="py-16 text-center">
+                       <div className="flex flex-col items-center gap-3 text-gray-400">
+@@ -271,81 +399,193 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+                     </td>
+                   </tr>
+                 ) : (
+-                  filteredOrders.map(ord => (
+-                    <tr key={ord.id}>
+-                      <td className="font-mono text-xs text-gray-400">#{ord.order_number.toString().padStart(6, '0')}</td>
+-                      <td>
+-                        {ord.order_type === 'PARCEL' || ord.order_type === 'TAKEAWAY' ? (
+-                          <>
+-                            <p className="font-semibold text-gray-900">Parcel</p>
+-                            <p className="text-xs text-gray-400">Takeaway</p>
+-                          </>
+-                        ) : (
+-                          <>
+-                            <p className="font-semibold text-gray-900">{ord.RestaurantTable?.table_number || 'N/A'}</p>
+-                            <p className="text-xs text-gray-400">Dine In</p>
+-                          </>
+-                        )}
+-                      </td>
+-                      <td className="text-gray-700">{ord.customer_name}</td>
+-                      <td className="font-semibold">{ord.OrderItems?.length || 0}</td>
+-                      <td className="font-semibold">Γé╣{parseFloat(ord.total_amount).toFixed(0)}</td>
+-                      <td>
+-                        {/* Click-through status action button */}
+-                        {ord.status === 'PENDING' && (
+-                          <button
+-                            onClick={() => handleUpdateOrderStatus(ord.id, 'PREPARING')}
+-                            className="text-xs font-bold px-3 py-1.5 bg-[#161a1d] text-white hover:bg-black transition-colors cursor-pointer whitespace-nowrap"
+-                          >
+-                            Accept
+-                          </button>
+-                        )}
+-                        {ord.status === 'PREPARING' && (
+-                          <button
+-                            onClick={() => handleUpdateOrderStatus(ord.id, 'READY')}
+-                            className="text-xs font-bold px-3 py-1.5 bg-[#ba181b] text-white hover:bg-[#a4161a] transition-colors cursor-pointer whitespace-nowrap"
+-                          >
+-                            Mark Ready
+-                          </button>
+-                        )}
+-                        {ord.status === 'READY' && (
+-                          <button
+-                            onClick={() => handlePaymentReceived(ord)}
+-                            className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer whitespace-nowrap"
+-                          >
+-                            Payment Received
+-                          </button>
+-                        )}
+-                        {ord.status === 'SERVED' && (
+-                          <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
+-                            <Check size={12} className="text-emerald-500" /> Served
+-                          </span>
+-                        )}
+-                        {ord.status === 'CANCELLED' && (
+-                          <span className="text-xs font-semibold text-red-400">Cancelled</span>
+-                        )}
+-                      </td>
+-                      <td className="text-xs text-gray-400">
+-                        <p>{new Date(ord.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+-                        <p>{new Date(ord.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+-                      </td>
+-                      <td className="text-center">
+-                        {ord.payment_status === 'PAID'
+-                          ? <Check size={16} className="text-emerald-500 mx-auto" />
+-                          : <span className="text-xs text-gray-300 font-semibold">ΓÇö</span>}
+-                      </td>
+-                      <td className="text-right">
+-                        <div className="flex justify-end gap-1.5">
+-                          <button onClick={() => setSelectedOrder(ord)} className="dd-btn-secondary !py-1.5 !px-2.5 !text-xs" title="View order details">
+-                            <IconEye />
+-                          </button>
+-                          <button onClick={() => setBillPreviewOrder(ord)} className="dd-btn-primary !py-1.5 !px-2.5 !text-xs" title="Print bill">
+-                            <IconPrint />
+-                          </button>
+-                        </div>
+-                      </td>
+-                    </tr>
+-                  ))
++                  groupedRows.map(row => {
++                    if (row.type === 'session') {
++                      return row.orders.map((ord, idx) => (
++                        <tr
++                          key={ord.id}
++                          className={`${
++                            idx === row.orders.length - 1 ? 'border-b-2 border-gray-300' : 'border-b border-gray-100'
++                          } bg-amber-50/10 hover:bg-amber-50/20 transition-all`}
++                        >
++                          <td className="font-mono text-xs text-gray-400">
++                            #{ord.order_number.toString().padStart(6, '0')}
++                          </td>
++                          {idx === 0 && (
++                            <td rowSpan={row.orders.length} className="align-middle border-r border-gray-200/50 bg-white">
++                              <p className="font-semibold text-gray-900">{row.table?.table_number || 'N/A'}</p>
++                              <p className="text-xs text-gray-400">Dine In</p>
++                            </td>
++                          )}
++                          <td className="text-gray-700">{ord.customer_name}</td>
++                          <td className="font-semibold">{ord.OrderItems?.length || 0}</td>
++                          <td className="font-semibold">
++                            Γé╣{parseFloat(ord.total_amount).toFixed(0)}
++                            {idx === row.orders.length - 1 && row.orders.length > 1 && (
++                              <div className="text-[10px] text-gray-500 font-bold border-t border-dashed border-gray-200 mt-1 pt-1">
++                                Session Total: Γé╣{row.total_amount.toFixed(0)}
++                              </div>
++                            )}
++                          </td>
++                          <td>
++                            {ord.status === 'PENDING' && (
++                              <button
++                                onClick={() => handleUpdateOrderStatus(ord.id, 'PREPARING')}
++                                className="text-xs font-bold px-3 py-1.5 bg-[#161a1d] text-white hover:bg-black transition-colors cursor-pointer whitespace-nowrap"
++                              >
++                                Accept
++                              </button>
++                            )}
++                            {ord.status === 'PREPARING' && (
++                              <button
++                                onClick={() => handleUpdateOrderStatus(ord.id, 'READY')}
++                                className="text-xs font-bold px-3 py-1.5 bg-[#ba181b] text-white hover:bg-[#a4161a] transition-colors cursor-pointer whitespace-nowrap"
++                              >
++                                Mark Ready
++                              </button>
++                            )}
++                            {ord.status === 'READY' && (
++                              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1">
++                                Ready
++                              </span>
++                            )}
++                            {ord.status === 'SERVED' && (
++                              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
++                                <Check size={12} className="text-emerald-500" /> Served
++                              </span>
++                            )}
++                            {ord.status === 'CANCELLED' && (
++                              <span className="text-xs font-semibold text-red-400">Cancelled</span>
++                            )}
++                          </td>
++                          <td className="text-xs text-gray-400">
++                            <p>{getMinutesAgo(ord.created_at)}</p>
++                          </td>
++                          <td className="text-center">
++                            {ord.payment_status === 'PAID'
++                              ? <Check size={16} className="text-emerald-500 mx-auto" />
++                              : <span className="text-xs text-gray-300 font-semibold">ΓÇö</span>}
++                          </td>
++                          {idx === 0 && (
++                            <td rowSpan={row.orders.length} className="align-middle border-l border-gray-200/50 bg-white">
++                              <div className="flex flex-col gap-2 p-1 max-w-[140px]">
++                                <div className="flex flex-col gap-1 border-b border-gray-100 pb-2 mb-1">
++                                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">View Details</p>
++                                  {row.orders.map(o => (
++                                    <button
++                                      key={o.id}
++                                      onClick={() => setSelectedOrder(o)}
++                                      className="dd-btn-secondary !py-1 !px-2 !text-[11px] justify-between gap-1 w-full cursor-pointer flex items-center"
++                                    >
++                                      <span>KOT #{o.order_number}</span> <IconEye />
++                                    </button>
++                                  ))}
++                                </div>
++                                {(() => {
++                                  const orderWithTableId = row.orders.find(o => o.table_id || o.RestaurantTable?.id) || row.orders[row.orders.length - 1]
++                                  return (
++                                    <>
++                                      <button
++                                        onClick={() => setBillPreviewOrder(orderWithTableId)}
++                                        className="dd-btn-primary !py-1.5 !px-2.5 !text-xs justify-center gap-1 w-full cursor-pointer"
++                                        title="Print session bill"
++                                      >
++                                        <IconPrint /> Print Bill
++                                      </button>
++                                      <button
++                                        onClick={() => handlePaymentReceived(orderWithTableId)}
++                                        className="w-full text-xs font-bold py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer text-center rounded whitespace-nowrap"
++                                      >
++                                        Payment Received
++                                      </button>
++                                    </>
++                                  )
++                                })()}
++                              </div>
++                            </td>
++                          )}
++                        </tr>
++                      ))
++                    } else {
++                      const ord = row.orders[0]
++                      return (
++                        <tr key={ord.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-all">
++                          <td className="font-mono text-xs text-gray-400">
++                            #{ord.order_number.toString().padStart(6, '0')}
++                          </td>
++                          <td>
++                            {ord.order_type === 'PARCEL' || ord.order_type === 'TAKEAWAY' ? (
++                              <>
++                                <p className="font-semibold text-gray-900">Parcel</p>
++                                <p className="text-xs text-gray-400">Takeaway</p>
++                              </>
++                            ) : (
++                              <>
++                                <p className="font-semibold text-gray-900">{ord.RestaurantTable?.table_number || 'N/A'}</p>
++                                <p className="text-xs text-gray-400">Dine In</p>
++                              </>
++                            )}
++                          </td>
++                          <td className="text-gray-700">{ord.customer_name}</td>
++                          <td className="font-semibold">{ord.OrderItems?.length || 0}</td>
++                          <td className="font-semibold">Γé╣{parseFloat(ord.total_amount).toFixed(0)}</td>
++                          <td>
++                            {ord.status === 'PENDING' && (
++                              <button
++                                onClick={() => handleUpdateOrderStatus(ord.id, 'PREPARING')}
++                                className="text-xs font-bold px-3 py-1.5 bg-[#161a1d] text-white hover:bg-black transition-colors cursor-pointer whitespace-nowrap"
++                              >
++                                Accept
++                              </button>
++                            )}
++                            {ord.status === 'PREPARING' && (
++                              <button
++                                onClick={() => handleUpdateOrderStatus(ord.id, 'READY')}
++                                className="text-xs font-bold px-3 py-1.5 bg-[#ba181b] text-white hover:bg-[#a4161a] transition-colors cursor-pointer whitespace-nowrap"
++                              >
++                                Mark Ready
++                              </button>
++                            )}
++                            {ord.status === 'READY' && (
++                              <button
++                                onClick={() => handlePaymentReceived(ord)}
++                                className="text-xs font-bold px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer whitespace-nowrap"
++                              >
++                                Payment Received
++                              </button>
++                            )}
++                            {ord.status === 'SERVED' && (
++                              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1">
++                                <Check size={12} className="text-emerald-500" /> Served
++                              </span>
++                            )}
++                            {ord.status === 'CANCELLED' && (
++                              <span className="text-xs font-semibold text-red-400">Cancelled</span>
++                            )}
++                          </td>
++                          <td className="text-xs text-gray-400">
++                            <p>{new Date(ord.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
++                            <p>{new Date(ord.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}</p>
++                          </td>
++                          <td className="text-center">
++                            {ord.payment_status === 'PAID'
++                              ? <Check size={16} className="text-emerald-500 mx-auto" />
++                              : <span className="text-xs text-gray-300 font-semibold">ΓÇö</span>}
++                          </td>
++                          <td className="text-right">
++                            <div className="flex justify-end gap-1.5">
++                              <button onClick={() => setSelectedOrder(ord)} className="dd-btn-secondary !py-1.5 !px-2.5 !text-xs" title="View order details">
++                                <IconEye />
++                              </button>
++                              <button onClick={() => setBillPreviewOrder(ord)} className="dd-btn-primary !py-1.5 !px-2.5 !text-xs" title="Print bill">
++                                <IconPrint />
++                              </button>
++                            </div>
++                          </td>
++                        </tr>
++                      )
++                    }
++                  })
+                 )}
+               </tbody>
+             </table>
+@@ -458,100 +698,197 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+       {billPreviewOrder && (
+         <div className="dd-modal-backdrop" style={{ zIndex: 60 }}>
+           <div className="dd-modal max-w-xs dd-fade-in" style={{ maxHeight: '90vh' }}>
+-            <div className="dd-card-header">
+-              <h4 className="font-semibold text-gray-900">Bill Preview</h4>
+-              <button onClick={() => setBillPreviewOrder(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer"><IconX /></button>
++            <div className="dd-card-header flex-col !items-stretch gap-3">
++              <div className="flex justify-between items-center">
++                <h4 className="font-semibold text-gray-900">Bill Preview</h4>
++                <button onClick={() => setBillPreviewOrder(null)} className="text-gray-400 hover:text-gray-700 cursor-pointer"><IconX /></button>
++              </div>
++              {sessionDetails && (
++                <div className="flex bg-[#f5f3f4] p-1 border rounded" style={{ borderColor: 'var(--border)' }}>
++                  <button
++                    onClick={() => setPrintMode('individual')}
++                    className={`flex-1 py-1 text-xs font-bold transition-all rounded cursor-pointer ${
++                      printMode === 'individual'
++                        ? 'bg-[#ba181b] text-white'
++                        : 'text-gray-600 hover:text-gray-900'
++                    }`}
++                  >
++                    Individual Order
++                  </button>
++                  <button
++                    onClick={() => setPrintMode('session')}
++                    className={`flex-1 py-1 text-xs font-bold transition-all rounded cursor-pointer ${
++                      printMode === 'session'
++                        ? 'bg-[#ba181b] text-white'
++                        : 'text-gray-600 hover:text-gray-900'
++                    }`}
++                  >
++                    Table Session
++                  </button>
++                </div>
++              )}
+             </div>
+             <div className="p-5 bg-gray-100 overflow-y-auto flex justify-center">
+-              <div className="bg-white p-5 shadow-sm" id="bill-print-area" style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5', color: '#000' }}>
+-                <div className="text-center border-b border-dashed border-black pb-3 mb-3 flex flex-col items-center">
+-                  {restaurant?.logo_url && (
+-                    <img
+-                      src={restaurant.logo_url}
+-                      alt="Logo"
+-                      className="w-12 h-12 object-cover rounded mb-2 border border-black"
+-                    />
+-                  )}
+-                  <h2 className="text-sm font-bold uppercase mb-0.5">{restaurant?.name || user?.name || 'Restaurant'}</h2>
+-                  <p className="text-[10px]">TAX INVOICE</p>
++              {printMode === 'session' && loadingSession ? (
++                <div className="bg-white p-5 shadow-sm flex flex-col items-center justify-center" style={{ width: '80mm', height: '120mm' }}>
++                  <div className="w-8 h-8 border-4 border-[#ba181b]/20 border-t-[#ba181b] animate-spin mb-3"></div>
++                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Fetching Session Bill...</p>
+                 </div>
+-                <div className="mb-3 space-y-0.5 text-xs">
+-                  <p>Order: #{billPreviewOrder.order_number.toString().padStart(6, '0')}</p>
+-                  <p>
+-                    {billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY'
+-                      ? 'Type: Parcel'
+-                      : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`}
+-                  </p>
+-                  <p>Guest: {billPreviewOrder.customer_name}</p>
+-                  <p>Date: {new Date(billPreviewOrder.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</p>
+-                </div>
+-                <div className="border-t border-b border-dashed border-black py-2 mb-3">
+-                  <table className="w-full text-xs">
+-                    <thead>
+-                      <tr className="border-b border-dashed border-black">
+-                        <th className="pb-1 font-normal text-left">Item</th>
+-                        <th className="pb-1 font-normal text-center w-8">Qty</th>
+-                        <th className="pb-1 font-normal text-right w-12">Amt</th>
+-                      </tr>
+-                    </thead>
+-                    <tbody>
+-                      {billPreviewOrder.OrderItems?.map(item => (
+-                        <tr key={item.id}>
+-                          <td className="py-0.5 pr-2 break-words">
+-                            <div>{item.MenuItem?.name_en}</div>
+-                            {item.MenuItem?.is_combo && item.MenuItem?.ComboComponents && (
+-                              <div className="text-[10px] text-gray-500 pl-2">
+-                                {item.MenuItem.ComboComponents.map(comp => (
+-                                  <div key={comp.id}>
+-                                    - {comp.ComboItem?.quantity || comp.quantity || 1}x {comp.name_en}
+-                                  </div>
+-                                ))}
+-                              </div>
+-                            )}
+-                          </td>
+-                          <td className="py-0.5 text-center align-top">{item.quantity}</td>
+-                          <td className="py-0.5 text-right align-top">Γé╣{parseFloat(item.total_price).toFixed(0)}</td>
++              ) : printMode === 'session' && sessionDetails ? (
++                <div className="bg-white p-5 shadow-sm" id="bill-print-area" style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5', color: '#000' }}>
++                  <div className="text-center border-b border-dashed border-black pb-3 mb-3 flex flex-col items-center">
++                    {restaurant?.logo_url && (
++                      <img
++                        src={restaurant.logo_url}
++                        alt="Logo"
++                        className="w-12 h-12 object-cover rounded mb-2 border border-black"
++                      />
++                    )}
++                    <h2 className="text-sm font-bold uppercase mb-0.5">{restaurant?.name || user?.name || 'Restaurant'}</h2>
++                    <p className="text-[10px]">TAX INVOICE (SESSION BILL)</p>
++                  </div>
++                  <div className="mb-3 space-y-0.5 text-xs">
++                    <p className="break-words">Orders: {sessionDetails.orders?.map(o => `#${o.order_number}`).join(', ')}</p>
++                    <p>Table: {sessionDetails.table_number || 'N/A'}</p>
++                    <p className="break-words">Guests: {sessionDetails.orders?.map(o => o.customer_name).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</p>
++                    <p>Date: {new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</p>
++                  </div>
++                  <div className="border-t border-b border-dashed border-black py-2 mb-3">
++                    <table className="w-full text-xs">
++                      <thead>
++                        <tr className="border-b border-dashed border-black">
++                          <th className="pb-1 font-normal text-left">Item</th>
++                          <th className="pb-1 font-normal text-center w-8">Qty</th>
++                          <th className="pb-1 font-normal text-right w-12">Amt</th>
+                         </tr>
+-                      ))}
+-                    </tbody>
+-                  </table>
+-                </div>
+-                <div className="flex justify-between font-bold text-sm mb-4">
+-                  <span>TOTAL</span>
+-                  <span>Γé╣{parseFloat(billPreviewOrder.total_amount).toFixed(0)}</span>
++                      </thead>
++                      <tbody>
++                        {sessionDetails.combined_items?.map((item, idx) => (
++                          <tr key={idx}>
++                            <td className="py-0.5 pr-2 break-words">
++                              <div>{item.name_en}</div>
++                            </td>
++                            <td className="py-0.5 text-center align-top">{item.quantity}</td>
++                            <td className="py-0.5 text-right align-top">Γé╣{parseFloat(item.total_price).toFixed(0)}</td>
++                          </tr>
++                        ))}
++                      </tbody>
++                    </table>
++                  </div>
++                  <div className="flex justify-between font-bold text-sm mb-4">
++                    <span>SESSION TOTAL</span>
++                    <span>Γé╣{parseFloat(sessionDetails.totals?.total_amount || 0).toFixed(0)}</span>
++                  </div>
++                  <div className="text-center text-xs border-t border-dashed border-black pt-3">
++                    <p>Thank you for dining with us!</p>
++                    <p className="text-gray-500 mt-0.5">Powered by DineDash</p>
++                  </div>
+                 </div>
+-                <div className="text-center text-xs border-t border-dashed border-black pt-3">
+-                  <p>Thank you for dining with us!</p>
+-                  <p className="text-gray-500 mt-0.5">Powered by DineDash</p>
++              ) : (
++                <div className="bg-white p-5 shadow-sm" id="bill-print-area" style={{ width: '80mm', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5', color: '#000' }}>
++                  <div className="text-center border-b border-dashed border-black pb-3 mb-3 flex flex-col items-center">
++                    {restaurant?.logo_url && (
++                      <img
++                        src={restaurant.logo_url}
++                        alt="Logo"
++                        className="w-12 h-12 object-cover rounded mb-2 border border-black"
++                      />
++                    )}
++                    <h2 className="text-sm font-bold uppercase mb-0.5">{restaurant?.name || user?.name || 'Restaurant'}</h2>
++                    <p className="text-[10px]">TAX INVOICE</p>
++                  </div>
++                  <div className="mb-3 space-y-0.5 text-xs">
++                    <p>Order: #{billPreviewOrder.order_number.toString().padStart(6, '0')}</p>
++                    <p>
++                      {billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY'
++                        ? 'Type: Parcel'
++                        : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`}
++                    </p>
++                    <p>Guest: {billPreviewOrder.customer_name}</p>
++                    <p>Date: {new Date(billPreviewOrder.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</p>
++                  </div>
++                  <div className="border-t border-b border-dashed border-black py-2 mb-3">
++                    <table className="w-full text-xs">
++                      <thead>
++                        <tr className="border-b border-dashed border-black">
++                          <th className="pb-1 font-normal text-left">Item</th>
++                          <th className="pb-1 font-normal text-center w-8">Qty</th>
++                          <th className="pb-1 font-normal text-right w-12">Amt</th>
++                        </tr>
++                      </thead>
++                      <tbody>
++                        {billPreviewOrder.OrderItems?.map(item => (
++                          <tr key={item.id}>
++                            <td className="py-0.5 pr-2 break-words">
++                              <div>{item.MenuItem?.name_en}</div>
++                              {item.MenuItem?.is_combo && item.MenuItem?.ComboComponents && (
++                                <div className="text-[10px] text-gray-500 pl-2">
++                                  {item.MenuItem.ComboComponents.map(comp => (
++                                    <div key={comp.id}>
++                                      - {comp.ComboItem?.quantity || comp.quantity || 1}x {comp.name_en}
++                                    </div>
++                                  ))}
++                                </div>
++                              )}
++                            </td>
++                            <td className="py-0.5 text-center align-top">{item.quantity}</td>
++                            <td className="py-0.5 text-right align-top">Γé╣{parseFloat(item.total_price).toFixed(0)}</td>
++                          </tr>
++                        ))}
++                      </tbody>
++                    </table>
++                  </div>
++                  <div className="flex justify-between font-bold text-sm mb-4">
++                    <span>TOTAL</span>
++                    <span>Γé╣{parseFloat(billPreviewOrder.total_amount).toFixed(0)}</span>
++                  </div>
++                  <div className="text-center text-xs border-t border-dashed border-black pt-3">
++                    <p>Thank you for dining with us!</p>
++                    <p className="text-gray-500 mt-0.5">Powered by DineDash</p>
++                  </div>
+                 </div>
+-              </div>
++              )}
+             </div>
+             <div className="p-4 bg-white border-t" style={{ borderColor: 'var(--border)' }}>
+               <button
++                disabled={printMode === 'session' && loadingSession}
+                 onClick={async () => {
+                   try {
+                     if (!('serial' in navigator)) {
+                       alert('Web Serial is not supported in this browser. Please use Chrome or Edge.')
+                       return
+                     }
+-                    const typeLabel = billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY' ? 'Type: Parcel' : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`
+-                    const text = `${restaurant?.name || user?.name || 'Restaurant'}\nTAX INVOICE\n--------------------------------\nOrder: ${billPreviewOrder.order_number.toString().padStart(6, '0')}\n${typeLabel}\nGuest: ${billPreviewOrder.customer_name}\n--------------------------------\nItem                Qty      Amt\n--------------------------------\n${billPreviewOrder.OrderItems?.map(item => {
+-                      const name = (item.MenuItem?.name_en || '').padEnd(20, ' ').substring(0, 20)
+-                      const qty = item.quantity.toString().padStart(3, ' ')
+-                      const amt = parseFloat(item.total_price).toFixed(0).padStart(7, ' ')
+-                      let line = `${name}${qty}${amt}`
+-                      if (item.MenuItem?.is_combo && item.MenuItem?.ComboComponents) {
+-                        const comboLines = item.MenuItem.ComboComponents.map(comp => {
+-                          const compQty = (comp.ComboItem?.quantity || comp.quantity || 1) * item.quantity
+-                          const compLabel = `  - ${compQty}x ${comp.name_en}`
+-                          return compLabel.padEnd(30, ' ').substring(0, 30)
+-                        }).join('\n')
+-                        if (comboLines) {
+-                          line += `\n${comboLines}`
++                    let text = ''
++                    if (printMode === 'session' && sessionDetails) {
++                      const orderList = sessionDetails.orders?.map(o => `#${o.order_number}`).join(', ') || ''
++                      const guests = sessionDetails.orders?.map(o => o.customer_name).filter((v, i, a) => a.indexOf(v) === i).join(', ') || ''
++                      const typeLabel = `Table: ${sessionDetails.table_number || 'N/A'}`
++                      text = `${restaurant?.name || user?.name || 'Restaurant'}\nTAX INVOICE (SESSION BILL)\n--------------------------------\nOrders: ${orderList}\n${typeLabel}\nGuests: ${guests}\n--------------------------------\nItem                Qty      Amt\n--------------------------------\n${sessionDetails.combined_items?.map(item => {
++                        const name = (item.name_en || '').padEnd(20, ' ').substring(0, 20)
++                        const qty = item.quantity.toString().padStart(3, ' ')
++                        const amt = parseFloat(item.total_price).toFixed(0).padStart(7, ' ')
++                        return `${name}${qty}${amt}`
++                      }).join('\n') || ''}\n--------------------------------\nTOTAL: ${' '.repeat(14)}Rs.${parseFloat(sessionDetails.totals?.total_amount || 0).toFixed(0)}\n--------------------------------\nThank you for dining with us!\n`
++                    } else {
++                      const typeLabel = billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY' ? 'Type: Parcel' : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`
++                      text = `${restaurant?.name || user?.name || 'Restaurant'}\nTAX INVOICE\n--------------------------------\nOrder: ${billPreviewOrder.order_number.toString().padStart(6, '0')}\n${typeLabel}\nGuest: ${billPreviewOrder.customer_name}\n--------------------------------\nItem                Qty      Amt\n--------------------------------\n${billPreviewOrder.OrderItems?.map(item => {
++                        const name = (item.MenuItem?.name_en || '').padEnd(20, ' ').substring(0, 20)
++                        const qty = item.quantity.toString().padStart(3, ' ')
++                        const amt = parseFloat(item.total_price).toFixed(0).padStart(7, ' ')
++                        let line = `${name}${qty}${amt}`
++                        if (item.MenuItem?.is_combo && item.MenuItem?.ComboComponents) {
++                          const comboLines = item.MenuItem.ComboComponents.map(comp => {
++                            const compQty = (comp.ComboItem?.quantity || comp.quantity || 1) * item.quantity
++                            const compLabel = `  - ${compQty}x ${comp.name_en}`
++                            return compLabel.padEnd(30, ' ').substring(0, 30)
++                          }).join('\n')
++                          if (comboLines) {
++                            line += `\n${comboLines}`
++                          }
+                         }
+-                      }
+-                      return line
+-                    }).join('\n') || ''}\n--------------------------------\nTOTAL: ${' '.repeat(14)}Rs.${parseFloat(billPreviewOrder.total_amount).toFixed(0)}\n--------------------------------\nThank you for dining with us!\n`
++                        return line
++                      }).join('\n') || ''}\n--------------------------------\nTOTAL: ${' '.repeat(14)}Rs.${parseFloat(billPreviewOrder.total_amount).toFixed(0)}\n--------------------------------\nThank you for dining with us!\n`
++                    }
+                     let printerPort = window.__printerPort
+                     if (!printerPort) {
+                       const ports = await navigator.serial.getPorts()
+@@ -573,7 +910,7 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
+                     alert('Print failed: ' + error.message)
+                   }
+                 }}
+-                className="w-full dd-btn-primary justify-center py-3"
++                className="w-full dd-btn-primary justify-center py-3 disabled:opacity-50"
+               >
+                 <IconPrint /> Print Receipt
+               </button>

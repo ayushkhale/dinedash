@@ -4,7 +4,8 @@ import { io } from 'socket.io-client'
 export function useRestaurantSocket({
   user,
   setOrders,
-  setWaiterCalls
+  setWaiterCalls,
+  setTables
 }) {
   useEffect(() => {
     const ts = () => new Date().toISOString()
@@ -88,9 +89,28 @@ export function useRestaurantSocket({
       setWaiterCalls((prev) => prev.filter(c => c.id !== payload.id))
     })
 
+    socketConn.on('table_session_cleared', (payload) => {
+      console.log(`[Socket][${ts()}] 🧹 table_session_cleared:`, payload)
+      // 1. Update matching orders status/payment
+      setOrders((prev) =>
+        prev.map(ord => (ord.table_id === payload.table_id || ord.RestaurantTable?.id === payload.table_id)
+          ? { ...ord, payment_status: 'PAID', status: 'SERVED' }
+          : ord
+        )
+      )
+      // 2. Update table session status in tables list
+      if (setTables) {
+        setTables((prevTables) =>
+          prevTables.map((table) =>
+            table.id === payload.table_id ? { ...table, session_status: payload.session_status } : table
+          )
+        )
+      }
+    })
+
     return () => {
       console.info(`[Socket][${ts()}] 🧹 Cleaning up — disconnecting socket ${socketConn.id}`)
       socketConn.disconnect()
     }
-  }, [user?.restaurant_id, user?.id, setOrders, setWaiterCalls])
+  }, [user?.restaurant_id, user?.id, setOrders, setWaiterCalls, setTables])
 }

@@ -55,7 +55,7 @@ export default function OverviewWorkspace({ orders, tables, waiterCalls, setActi
   }
 
   return (
-    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5">
+    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5 min-h-0">
 
       {/* ── Workspace Header ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-4" style={{ borderColor: 'var(--border)' }}>

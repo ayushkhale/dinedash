@@ -174,7 +174,7 @@ export default function PromotionsWorkspace() {
   const activePromoCount = promotions.filter(p => statusBadge(p).label === 'Active').length
 
   return (
-    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5">
+    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5 min-h-0">
 
       {/* ── Flash Messages ──────────────────────────────────────── */}
       {error && (

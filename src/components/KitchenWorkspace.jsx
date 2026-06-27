@@ -65,7 +65,7 @@ export default function KitchenWorkspace({ orders, fetchOrders }) {
         </div>
       </div>
 
-      <div className="p-6 flex-1 flex flex-col overflow-y-auto">
+      <div className="p-6 flex-1 flex flex-col overflow-y-auto min-h-0">
         {loading ? (
           <div className="flex-1 flex flex-col justify-center items-center gap-3 py-20">
             <div className="dd-spinner" />

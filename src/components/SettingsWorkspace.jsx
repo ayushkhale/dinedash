@@ -62,6 +62,7 @@ const IconImage = () => (
   </svg>
 )
 
+
 const TABS = [
   { key: 'profile',    label: 'My Profile',         Icon: IconUser },
   { key: 'restaurant', label: 'Restaurant Settings', Icon: IconBuilding },
@@ -90,6 +91,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
 
   useEffect(() => { setError(''); setSuccess('') }, [activeSubTab])
+
 
   const fetchSettingsData = async () => {
     setLoading(true)
@@ -295,7 +297,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
   const tabs = TABS.filter(t => !t.ownerOnly || isOwner)
 
   return (
-    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5">
+    <div className="p-6 flex-1 flex flex-col overflow-y-auto space-y-5 min-h-0">
 
       {/* ── Flash Messages ──────────────────────────────────────── */}
       {error && (
@@ -558,7 +560,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
           <div className="dd-card-header">
             <div>
               <h3 className="font-semibold text-gray-900">Staff Accounts</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Staff can access Kitchen and Orders screens</p>
+              <p className="text-xs text-gray-400 mt-0.5">Staff can access the Kitchen screen</p>
             </div>
             <button onClick={() => handleOpenStaffModal()} className="dd-btn-primary">
               <IconPlus /> Add Staff
@@ -619,6 +621,142 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── 4. BILLING ──────────────────────────────────────────── */}
+      {activeSubTab === 'billing' && isOwner && (
+        <div className="space-y-5">
+
+          {/* Post-payment sync banner */}
+          {syncBanner && (
+            <div className="p-4 rounded bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium flex items-center gap-3">
+              <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>Syncing payment state with billing gateway — this usually takes a few seconds...</span>
+            </div>
+          )}
+
+          {/* Current Subscription Card */}
+          <div className="dd-card">
+            <div className="dd-card-header">
+              <div>
+                <h3 className="font-semibold text-gray-900">Current Subscription</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Your active plan and billing cycle details</p>
+              </div>
+              <button onClick={fetchSubscription} disabled={subLoading}
+                className="dd-btn-secondary !py-1.5 !px-3 !text-xs">
+                {subLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+
+            <div className="p-5">
+              {subLoading ? (
+                <div className="flex items-center gap-3 py-4">
+                  <div className="dd-spinner" />
+                  <span className="text-sm text-gray-400">Loading subscription details...</span>
+                </div>
+              ) : subscription ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Plan</p>
+                    <p className="font-bold text-gray-900">{subscription.plan}</p>
+                  </div>
+                  <div className="bg-gray-50 border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Status</p>
+                    <span className={`dd-badge ${
+                      subscription.status === 'ACTIVE'
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-red-50 text-[#ba181b] border-red-200'
+                    }`}>{subscription.status}</span>
+                  </div>
+                  <div className="bg-gray-50 border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Expires On</p>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {new Date(subscription.ends_at).toLocaleDateString('en-IN', {
+                        day: 'numeric', month: 'long', year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 border rounded-lg p-4" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Amount Paid</p>
+                    <p className="font-bold text-gray-900">₹{parseFloat(subscription.amount_paid).toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-6 text-center">
+                  <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-400 mx-auto mb-3">
+                    <IconCreditCard size={22} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-600">No active subscription found</p>
+                  <p className="text-xs text-gray-400 mt-1">Subscribe below to unlock your dashboard.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Renew / Subscribe Card */}
+          <div className="dd-card">
+            <div className="dd-card-header">
+              <div>
+                <h3 className="font-semibold text-gray-900">Renew / Subscribe</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Choose a plan and complete payment via Razorpay</p>
+              </div>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* Plan Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { key: 'MONTHLY', label: 'Monthly', price: '₹99', period: '/month', desc: 'Billed every 30 days' },
+                  { key: 'YEARLY',  label: 'Yearly',  price: '₹999', period: '/year', desc: 'Save ~16% vs monthly' },
+                ].map(plan => (
+                  <button
+                    key={plan.key}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.key)}
+                    className={`text-left p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                      selectedPlan === plan.key
+                        ? 'border-[#ba181b] bg-[#ba181b]/5'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-gray-900">{plan.label}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{plan.desc}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-lg text-gray-900">{plan.price}</span>
+                        <span className="text-xs text-gray-400">{plan.period}</span>
+                      </div>
+                    </div>
+                    {selectedPlan === plan.key && (
+                      <div className="mt-2 flex items-center gap-1.5 text-[#ba181b] text-xs font-semibold">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Selected
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRenewal}
+                disabled={payLoading}
+                className="dd-btn-primary w-full justify-center py-3"
+              >
+                {payLoading ? (
+                  <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Processing...</>
+                ) : (
+                  <><IconCreditCard size={16} /> Pay with Razorpay — {selectedPlan === 'MONTHLY' ? '₹99' : '₹999'}</>
+                )}
+              </button>
+
+              <p className="text-xs text-gray-400 text-center">
+                Payments are securely processed by Razorpay. Your subscription activates within seconds of payment confirmation.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
