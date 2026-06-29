@@ -95,7 +95,11 @@ export default function KitchenWorkspace({ orders, fetchOrders }) {
                       <p className="text-xs font-semibold text-[#b1a7a6]">
                         {ticket.order_type === 'PARCEL' || ticket.order_type === 'TAKEAWAY'
                           ? 'Parcel / Takeaway'
-                          : (ticket.RestaurantTable?.table_number ? `Table ${ticket.RestaurantTable.table_number}` : 'N/A')}
+                          : (ticket.RestaurantTable?.table_number
+                            ? (String(ticket.RestaurantTable.table_number).toLowerCase().startsWith('table')
+                                ? ticket.RestaurantTable.table_number
+                                : `Table ${ticket.RestaurantTable.table_number}`)
+                            : 'N/A')}
                       </p>
                       <p className="text-lg font-bold text-[#0b090a] leading-tight">#{ticket.order_number}</p>
                     </div>

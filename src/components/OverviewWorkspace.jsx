@@ -79,7 +79,7 @@ export default function OverviewWorkspace({ orders, tables, waiterCalls, setActi
           <div className="flex flex-wrap gap-2 flex-1">
             {waiterCalls.map(call => (
               <span key={call.id} className="text-sm font-semibold text-amber-800">
-                Table {call.table_number} is calling for a waiter
+                {String(call.table_number).toLowerCase().startsWith('table') ? call.table_number : `Table ${call.table_number}`} is calling for a waiter
                 {waiterCalls.indexOf(call) < waiterCalls.length - 1 && ' ·'}
               </span>
             ))}
@@ -139,7 +139,11 @@ export default function OverviewWorkspace({ orders, tables, waiterCalls, setActi
                     {!table.is_active && (
                       <span className="absolute top-1 right-1 text-[8px] opacity-50">Off</span>
                     )}
-                    <span className="text-sm font-bold leading-tight">{table.table_number}</span>
+                    <span className="text-sm font-bold leading-tight">
+                      {String(table.table_number).toLowerCase().startsWith('table')
+                        ? String(table.table_number).substring(5).trim()
+                        : table.table_number}
+                    </span>
                     <span className="text-[10px] font-medium mt-0.5 opacity-80">{label}</span>
                     {occupiedTableIds.has(table.id) && (
                       <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
@@ -157,7 +161,11 @@ export default function OverviewWorkspace({ orders, tables, waiterCalls, setActi
             <div className="bg-white border rounded-xl overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               <div className="px-5 py-4 border-b flex justify-between items-center" style={{ borderColor: 'var(--border)' }}>
                 <div>
-                  <p className="font-semibold text-gray-900">{selectedTable.table_number}</p>
+                  <p className="font-semibold text-gray-900">
+                    {String(selectedTable.table_number).toLowerCase().startsWith('table')
+                      ? selectedTable.table_number
+                      : `Table ${selectedTable.table_number}`}
+                  </p>
                   <span className={`text-xs font-semibold ${
                     occupiedTableIds.has(selectedTable.id) ? 'text-[#ba181b]'
                     : readyTableIds.has(selectedTable.id) ? 'text-[#161a1d]'

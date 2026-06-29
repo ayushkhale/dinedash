@@ -608,7 +608,7 @@ export default function PublicMenuPage() {
           </div>
           {table && (
             <span className="text-[10px] uppercase tracking-wider font-black text-[#0b090a] border border-[#0b090a] px-2.5 py-1 rounded-none inline-block">
-              Table {table.table_number}
+              {String(table.table_number).toLowerCase().startsWith('table') ? table.table_number : `Table ${table.table_number}`}
             </span>
           )}
         </header>

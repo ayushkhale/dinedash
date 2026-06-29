@@ -186,7 +186,7 @@ export const handlePrintCard = (table, restaurant) => {
           <div class="table-banner">
             <div class="table-info">
               <span class="table-label">Table</span>
-              <span class="table-number">${table.table_number}</span>
+              <span class="table-number">${String(table.table_number).toLowerCase().startsWith('table') ? String(table.table_number).substring(5).trim() : table.table_number}</span>
             </div>
             <span class="dine-in-badge">Dine In</span>
           </div>
@@ -243,7 +243,7 @@ export const handlePrintAll = (tables, restaurant) => {
         <div class="table-banner">
           <div class="table-info">
             <span class="table-label">Table</span>
-            <span class="table-number">${table.table_number}</span>
+            <span class="table-number">${String(table.table_number).toLowerCase().startsWith('table') ? String(table.table_number).substring(5).trim() : table.table_number}</span>
           </div>
           <span class="dine-in-badge">Dine In</span>
         </div>

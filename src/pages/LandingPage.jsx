@@ -1,21 +1,46 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import logoRed from '../assets/logored.png'
+import api from '../api'
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: 'General Inquiry', message: '' })
   const [contactSubmitted, setContactSubmitted] = useState(false)
   const [trialEmail, setTrialEmail] = useState('')
   const [trialSubmitted, setTrialSubmitted] = useState(false)
   const [printKey, setPrintKey] = useState(0)
+  const [apiPlans, setApiPlans] = useState([])
+
+  useEffect(() => {
+    const fetchApiPlans = async () => {
+      try {
+        const res = await api.get('/api/subscriptions/plans')
+        const data = res?.data ?? res
+        if (Array.isArray(data) && data.length > 0) {
+          setApiPlans(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch subscription plans for landing page:', err)
+      }
+    }
+    fetchApiPlans()
+  }, [])
 
   const handleContactSubmit = (e) => {
     e.preventDefault()
+
+    const mailtoLink = `mailto:compuniclimited@gmail.com?subject=${encodeURIComponent(contactForm.subject)}&body=${encodeURIComponent(
+      `Name: ${contactForm.name}\nEmail: ${contactForm.email}\n\nMessage:\n${contactForm.message}`
+    )}`
+
+    window.location.href = mailtoLink
+
     setContactSubmitted(true)
     setTimeout(() => {
       setContactSubmitted(false)
-      setContactForm({ name: '', email: '', subject: 'General Query', message: '' })
+      setContactForm({ name: '', email: '', subject: 'General Inquiry', message: '' })
     }, 3000)
   }
 
@@ -57,7 +82,7 @@ export default function LandingPage() {
       const ting = (start) => {
         const osc1 = ctx.createOscillator()
         const osc2 = ctx.createOscillator()
-        const env  = ctx.createGain()
+        const env = ctx.createGain()
         osc1.type = 'sine'; osc1.frequency.value = 1320   // E6 bell fundamental
         osc2.type = 'sine'; osc2.frequency.value = 2640   // octave overtone
         env.gain.setValueAtTime(0, start)
@@ -123,8 +148,8 @@ export default function LandingPage() {
          2.72 — END BEEP
       ────────────────────────────────────────────────────────────── */
       ting(t + 0.00)
-      beep(880,  t + 0.28, 0.14, 0.40)   // A5 beep 1
-      beep(880,  t + 0.48, 0.14, 0.40)   // A5 beep 2
+      beep(880, t + 0.28, 0.14, 0.40)   // A5 beep 1
+      beep(880, t + 0.48, 0.14, 0.40)   // A5 beep 2
       printerRoll(t + 0.68, 1.90)
       beep(1175, t + 2.72, 0.18, 0.35)   // D6 done-tone
 
@@ -132,6 +157,30 @@ export default function LandingPage() {
     } catch (_) {
       // Silently fail on browsers without AudioContext
     }
+  }
+
+  const getPlanFeatures = (planId) => {
+    if (planId === 'MONTHLY') {
+      return [
+        'Full dashboard access',
+        'POS & billing integration',
+        'Menu & inventory tools',
+        'Kitchen display & waiter alerts'
+      ]
+    } else if (planId === 'YEARLY') {
+      return [
+        'Everything in Monthly',
+        '2 months completely free',
+        'Priority partner support',
+        'Early access to updates'
+      ]
+    }
+    return [
+      'Full dashboard access',
+      'Live KDS display',
+      'UPI payments setup',
+      'Priority customer support'
+    ]
   }
 
   return (
@@ -143,37 +192,94 @@ export default function LandingPage() {
       }}
     >
       {/* 1. HEADER / NAVIGATION */}
-      <header className="sticky top-0 z-50 bg-[#f5f3f4]/90 backdrop-blur-md border-b border-[#d3d3d3]/80 px-6 lg:px-16 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img
-            src={logoRed}
-            alt="DineDash Logo"
-            className="h-10 w-auto object-contain cursor-pointer"
-            onClick={() => navigate('/')}
-          />
+      <header className="sticky top-0 z-50 bg-[#f5f3f4]/90 backdrop-blur-md border-b border-[#d3d3d3]/80 px-6 lg:px-16 py-4 flex flex-col">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3">
+            <img
+              src={logoRed}
+              alt="DineDash Logo"
+              className="h-10 w-auto object-contain cursor-pointer"
+              onClick={() => navigate('/')}
+            />
+          </div>
+
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Features</a>
+            <a href="#pricing" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Pricing</a>
+            <a href="#contact" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Contact</a>
+            <button
+              onClick={() => navigate('/login')}
+              className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors cursor-pointer"
+            >
+              Sign in
+            </button>
+            <button
+              onClick={() => navigate('/register')}
+              className="bg-[#ba181b] hover:bg-[#a4161a] active:bg-[#660708] text-white text-xs lg:text-sm font-bold px-4 py-2 rounded-lg transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.08)] cursor-pointer"
+            >
+              Start free trial
+            </button>
+          </nav>
+
+          {/* Mobile hamburger menu toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden flex items-center justify-center p-2 rounded-lg text-[#161a1d] hover:bg-[#d3d3d3]/40 focus:outline-none transition-colors"
+          >
+            {mobileMenuOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
 
-        <nav className="flex items-center gap-8">
-          <a href="#features" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Features</a>
-          <a href="#pricing" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Pricing</a>
-          <a href="#contact" className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors">Contact</a>
-          <button
-            onClick={() => navigate('/login')}
-            className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors cursor-pointer"
-          >
-            Sign in
-          </button>
-          <button
-            onClick={() => navigate('/register')}
-            className="bg-[#ba181b] hover:bg-[#a4161a] active:bg-[#660708] text-white text-xs lg:text-sm font-bold px-4 py-2 rounded-lg transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.08)] cursor-pointer"
-          >
-            Start free trial
-          </button>
-        </nav>
+        {/* Mobile Dropdown Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden flex flex-col gap-4 pt-4 pb-2 border-t border-[#d3d3d3]/40 mt-3 animate-fadeIn">
+            <a
+              href="#features"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors py-1.5"
+            >
+              Features
+            </a>
+            <a
+              href="#pricing"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors py-1.5"
+            >
+              Pricing
+            </a>
+            <a
+              href="#contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors py-1.5"
+            >
+              Contact
+            </a>
+            <button
+              onClick={() => { setMobileMenuOpen(false); navigate('/login') }}
+              className="text-left text-sm font-bold text-[#b1a7a6] hover:text-[#161a1d] transition-colors py-1.5 cursor-pointer"
+            >
+              Sign in
+            </button>
+            <button
+              onClick={() => { setMobileMenuOpen(false); navigate('/register') }}
+              className="bg-[#ba181b] hover:bg-[#a4161a] text-white text-xs font-bold py-2.5 rounded-lg transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.08)] cursor-pointer w-full text-center"
+            >
+              Start free trial
+            </button>
+          </div>
+        )}
       </header>
 
       {/* 2. HERO SECTION */}
-      <section className="px-6 lg:px-16 py-16 lg:py-24 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="px-6 lg:px-16 py-12 lg:py-24 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
         <div className="lg:col-span-7 flex flex-col items-start text-left">
           {/* Capsule Tag */}
           <span className="inline-flex items-center gap-2 bg-[#d3d3d3]/40 border border-[#b1a7a6] px-3.5 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-[#161a1d] mb-6">
@@ -199,18 +305,18 @@ export default function LandingPage() {
                 Creating your DineDash trial workspace...
               </div>
             ) : (
-              <form onSubmit={handleTrialSubmit} className="flex gap-2.5 mb-3">
+              <form onSubmit={handleTrialSubmit} className="flex flex-col sm:flex-row gap-2.5 mb-3 w-full">
                 <input
                   type="email"
                   value={trialEmail}
                   onChange={(e) => setTrialEmail(e.target.value)}
                   placeholder="Enter your restaurant email"
                   required
-                  className="flex-1 px-4 py-3 rounded-lg border border-[#d3d3d3] bg-white text-[#161a1d] placeholder-[#b1a7a6] text-sm focus:outline-none focus:border-[#ba181b] focus:ring-1 focus:ring-[#ba181b] transition-all"
+                  className="w-full sm:flex-1 px-4 py-3 rounded-lg border border-[#d3d3d3] bg-white text-[#161a1d] placeholder-[#b1a7a6] text-sm focus:outline-none focus:border-[#ba181b] focus:ring-1 focus:ring-[#ba181b] transition-all"
                 />
                 <button
                   type="submit"
-                  className="bg-[#ba181b] hover:bg-[#a4161a] active:bg-[#660708] text-white text-sm font-bold px-6 py-3 rounded-lg transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.08)] whitespace-nowrap"
+                  className="bg-[#ba181b] hover:bg-[#a4161a] active:bg-[#660708] text-white text-sm font-bold px-6 py-3 rounded-lg transition-colors cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.08)] w-full sm:w-auto text-center whitespace-nowrap"
                 >
                   Start free trial
                 </button>
@@ -261,9 +367,9 @@ export default function LandingPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between">
                     <div>
-                      <span className="font-bold text-[#0b090a]">1x</span> Butter Chicken
+                      <span className="font-bold text-[#0b090a]">1x</span> Paneer Butter Masala
                     </div>
-                    <span className="font-semibold text-neutral-600">₹360</span>
+                    <span className="font-semibold text-neutral-600">₹320</span>
                   </div>
                   <div className="flex justify-between">
                     <div>
@@ -288,7 +394,7 @@ export default function LandingPage() {
                 {/* Footer Summary */}
                 <div className="border-t border-dashed border-[#d3d3d3] pt-3 flex justify-between items-center">
                   <span className="font-bold text-[#0b090a] text-xs">Total Amount</span>
-                  <span className="font-bold text-[#ba181b] text-sm">₹600</span>
+                  <span className="font-bold text-[#ba181b] text-sm">₹560</span>
                 </div>
 
                 <div className="mt-4 text-center">
@@ -318,40 +424,36 @@ export default function LandingPage() {
         <div className="flex whitespace-nowrap animate-[marquee_25s_linear_infinite] gap-12 font-outfit text-xs font-bold uppercase tracking-widest text-[#f5f3f4]">
           <span>TAP-TO-ORDER</span>
           <span className="text-[#e5383b]">●</span>
-          <span>INSTANT CHECKOUT</span>
+          <span>DASHBOARD OVERVIEW</span>
           <span className="text-[#e5383b]">●</span>
           <span>SMART KITCHEN DISPLAYS</span>
           <span className="text-[#e5383b]">●</span>
-          <span>SPLIT BILLING</span>
+          <span>COUPON VALIDATION</span>
           <span className="text-[#e5383b]">●</span>
-          <span>CUSTOM DISH ADD-ONS</span>
+          <span>KOT LIVE STREAMING</span>
           <span className="text-[#e5383b]">●</span>
           <span>ZERO WAIT TIME</span>
           <span className="text-[#e5383b]">●</span>
-          <span>UPI INSTANT PAY</span>
+          <span>WAITER CALL SUMMON</span>
           <span className="text-[#e5383b]">●</span>
-          <span>DASHBOARD ANALYTICS</span>
-          <span className="text-[#e5383b]">●</span>
-          <span>MULTI-FLOOR COMPATIBLE</span>
+          <span>TABLE QR CODES</span>
           <span className="text-[#e5383b]">●</span>
           {/* Duplicate for infinite loop spacing */}
           <span>TAP-TO-ORDER</span>
           <span className="text-[#e5383b]">●</span>
-          <span>INSTANT CHECKOUT</span>
+          <span>DASHBOARD OVERVIEW</span>
           <span className="text-[#e5383b]">●</span>
           <span>SMART KITCHEN DISPLAYS</span>
           <span className="text-[#e5383b]">●</span>
-          <span>SPLIT BILLING</span>
+          <span>COUPON VALIDATION</span>
           <span className="text-[#e5383b]">●</span>
-          <span>CUSTOM DISH ADD-ONS</span>
+          <span>KOT LIVE STREAMING</span>
           <span className="text-[#e5383b]">●</span>
           <span>ZERO WAIT TIME</span>
           <span className="text-[#e5383b]">●</span>
-          <span>UPI INSTANT PAY</span>
+          <span>WAITER CALL SUMMON</span>
           <span className="text-[#e5383b]">●</span>
-          <span>DASHBOARD ANALYTICS</span>
-          <span className="text-[#e5383b]">●</span>
-          <span>MULTI-FLOOR COMPATIBLE</span>
+          <span>TABLE QR CODES</span>
         </div>
         <style dangerouslySetInnerHTML={{
           __html: `
@@ -381,7 +483,7 @@ export default function LandingPage() {
               Onboard Your Venue
             </h3>
             <p className="text-[#b1a7a6] text-sm leading-relaxed font-semibold">
-              Register, configure your logo, and add menu categories, pricing variations, food tags, and images. Link your UPI account for direct settlement.
+              Register, configure your logo, and add menu categories, food items, notes, and images. Add staff members and configure access permissions.
             </p>
           </div>
 
@@ -453,13 +555,13 @@ export default function LandingPage() {
             {/* Feature 3 */}
             <div>
               <span className="block text-[10px] font-bold text-[#e5383b] tracking-widest uppercase mb-1">
-                Transactions
+                Marketing
               </span>
               <h3 className="font-outfit text-lg font-bold text-white mb-2">
-                Instant Mobile Payments
+                Dynamic Coupon Engine
               </h3>
               <p className="text-[#b1a7a6] text-sm leading-relaxed font-semibold">
-                Allow customers to checkout directly from the menu via UPI, credit cards, or digital wallets. Direct restaurant bank settlements.
+                Configure promotional coupons (percentage or flat discounts, or free item rewards) and validate them in real time directly inside the customer cart.
               </p>
             </div>
 
@@ -479,13 +581,13 @@ export default function LandingPage() {
             {/* Feature 5 */}
             <div>
               <span className="block text-[10px] font-bold text-[#e5383b] tracking-widest uppercase mb-1">
-                Insights
+                Summon Server
               </span>
               <h3 className="font-outfit text-lg font-bold text-white mb-2">
-                Analytics Hub
+                Waiter Calling & Alerts
               </h3>
               <p className="text-[#b1a7a6] text-sm leading-relaxed font-semibold">
-                View real-time reports on menu item popularity, table sales performance, average order times, and floor bottlenecks.
+                Allow guests to summon a server with a single click. Dashboard receives live waiter summoning alerts mapping to exact table numbers.
               </p>
             </div>
 
@@ -508,8 +610,8 @@ export default function LandingPage() {
             {[
               'Zero guest downloads required',
               'Runs natively in mobile browsers',
-              'Direct-to-bank UPI transfers',
-              'Multi-room and multi-floor support',
+              'Dynamic coupon validation',
+              'Real-time order status tracker',
               'PDF bill generation & printing',
               'Universal responsive dashboard layout'
             ].map((item, i) => (
@@ -537,116 +639,163 @@ export default function LandingPage() {
         </p>
 
         {/* Side-by-side SaaS Pricing Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch justify-center">
+          {apiPlans.length > 0 ? (
+            apiPlans.map((plan) => {
+              const features = getPlanFeatures(plan.id)
+              const isHighlighted = plan.id === 'YEARLY'
+              return (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-xl border flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.005)] p-8 ${isHighlighted ? 'border-2 border-[#ba181b] shadow-[0_8px_30px_rgba(186,24,27,0.03)] relative' : 'border-[#d3d3d3]'
+                    }`}
+                >
+                  {isHighlighted && (
+                    <div className="absolute top-0 right-8 -translate-y-1/2 bg-[#ba181b] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Most Picked
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-outfit text-lg font-bold text-[#0b090a]">{plan.name}</h3>
+                      {plan.id === 'YEARLY' && <span className="text-[#ba181b] text-xs font-bold">2 Months Free</span>}
+                    </div>
+                    <p className="text-[#b1a7a6] text-xs font-semibold mb-6">{plan.description}</p>
+                    <div className="mb-6">
+                      <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹{plan.price}</span>
+                      <span className="text-xs text-[#b1a7a6] font-semibold"> / {plan.durationDays} days</span>
+                    </div>
+                    <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
+                      {features.map((feat, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-[#ba181b]">•</span> {feat}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className={`w-full text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer ${isHighlighted
+                        ? 'bg-[#ba181b] hover:bg-[#a4161a] text-white shadow-[0_2px_4px_rgba(0,0,0,0.05)]'
+                        : 'border border-[#d3d3d3] hover:bg-[#f5f3f4] text-[#161a1d]'
+                      }`}
+                  >
+                    {isHighlighted ? 'Choose yearly' : 'Choose plan'}
+                  </button>
+                </div>
+              )
+            })
+          ) : (
+            <>
+              {/* Card 1: Starter */}
+              <div className="bg-white rounded-xl border border-[#d3d3d3] p-8 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.005)]">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Starter Plan</h3>
+                    <span className="bg-[#f5f3f4] text-[#b1a7a6] text-[10px] font-bold px-2 py-0.5 rounded">7-day free trial</span>
+                  </div>
+                  <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Perfect for small cafes and food trucks.</p>
+                  <div className="mb-6">
+                    <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹599</span>
+                    <span className="text-xs text-[#b1a7a6] font-semibold"> / month</span>
+                  </div>
+                  <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Up to 15 tables
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Live KDS display
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> UPI payments setup
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#b1a7a6]/55">•</span> Email support
+                    </li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="w-full border border-[#d3d3d3] hover:bg-[#f5f3f4] text-[#161a1d] text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer"
+                >
+                  Start free trial
+                </button>
+              </div>
 
-          {/* Card 1: Starter */}
-          <div className="bg-white rounded-xl border border-[#d3d3d3] p-8 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.005)]">
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Starter Plan</h3>
-                <span className="bg-[#f5f3f4] text-[#b1a7a6] text-[10px] font-bold px-2 py-0.5 rounded">7-day free trial</span>
+              {/* Card 2: Growth (Highlighted) */}
+              <div className="bg-white rounded-xl border-2 border-[#ba181b] p-8 flex flex-col justify-between shadow-[0_8px_30px_rgba(186,24,27,0.03)] relative">
+                <div className="absolute top-0 right-8 -translate-y-1/2 bg-[#ba181b] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  Most Picked
+                </div>
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Growth Plan</h3>
+                    <span className="text-[#ba181b] text-xs font-bold">Save ₹198</span>
+                  </div>
+                  <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Best for busy bistros and family diners.</p>
+                  <div className="mb-6">
+                    <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹1,599</span>
+                    <span className="text-xs text-[#b1a7a6] font-semibold"> / 3 months</span>
+                  </div>
+                  <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Up to 50 tables
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Multi-floor operations
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Full billing & reporting panel
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Priority Whatsapp support
+                    </li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="w-full bg-[#ba181b] hover:bg-[#a4161a] text-white text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
+                >
+                  Choose growth
+                </button>
               </div>
-              <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Perfect for small cafes and food trucks.</p>
-              <div className="mb-6">
-                <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹599</span>
-                <span className="text-xs text-[#b1a7a6] font-semibold"> / month</span>
-              </div>
-              <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Up to 15 tables
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Live KDS display
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> UPI payments setup
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#b1a7a6]/55">•</span> Email support
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full border border-[#d3d3d3] hover:bg-[#f5f3f4] text-[#161a1d] text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer"
-            >
-              Start free trial
-            </button>
-          </div>
 
-          {/* Card 2: Growth (Highlighted) */}
-          <div className="bg-white rounded-xl border-2 border-[#ba181b] p-8 flex flex-col justify-between shadow-[0_8px_30px_rgba(186,24,27,0.03)] relative">
-            <div className="absolute top-0 right-8 -translate-y-1/2 bg-[#ba181b] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Most Picked
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Growth Plan</h3>
-                <span className="text-[#ba181b] text-xs font-bold">Save ₹198</span>
+              {/* Card 3: Professional */}
+              <div className="bg-white rounded-xl border border-[#d3d3d3] p-8 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.005)]">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Professional</h3>
+                    <span className="text-[#ba181b] text-xs font-bold">Save ₹1,189</span>
+                  </div>
+                  <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Built for large-scale premium dining halls.</p>
+                  <div className="mb-6">
+                    <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹5,999</span>
+                    <span className="text-xs text-[#b1a7a6] font-semibold"> / 12 months</span>
+                  </div>
+                  <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Unlimited tables & floors
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Analytics dashboard logs
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> Dedicated customer manager
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#ba181b]">•</span> API integrations access
+                    </li>
+                  </ul>
+                </div>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="w-full border border-[#d3d3d3] hover:bg-[#f5f3f4] text-[#161a1d] text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer"
+                >
+                  Start free trial
+                </button>
               </div>
-              <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Best for busy bistros and family diners.</p>
-              <div className="mb-6">
-                <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹1,599</span>
-                <span className="text-xs text-[#b1a7a6] font-semibold"> / 3 months</span>
-              </div>
-              <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Up to 50 tables
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Multi-floor operations
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Full billing & reporting panel
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Priority Whatsapp support
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full bg-[#ba181b] hover:bg-[#a4161a] text-white text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer shadow-[0_2px_4px_rgba(0,0,0,0.05)]"
-            >
-              Choose growth
-            </button>
-          </div>
-
-          {/* Card 3: Professional */}
-          <div className="bg-white rounded-xl border border-[#d3d3d3] p-8 flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.005)]">
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-outfit text-lg font-bold text-[#0b090a]">Professional</h3>
-                <span className="text-[#ba181b] text-xs font-bold">Save ₹1,189</span>
-              </div>
-              <p className="text-[#b1a7a6] text-xs font-semibold mb-6">Built for large-scale premium dining halls.</p>
-              <div className="mb-6">
-                <span className="font-outfit text-3xl font-bold text-[#0b090a]">₹5,999</span>
-                <span className="text-xs text-[#b1a7a6] font-semibold"> / 12 months</span>
-              </div>
-              <ul className="space-y-3 text-xs text-[#161a1d] font-semibold mb-8">
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Unlimited tables & floors
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Analytics dashboard logs
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> Dedicated customer manager
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-[#ba181b]">•</span> API integrations access
-                </li>
-              </ul>
-            </div>
-            <button
-              onClick={() => navigate('/register')}
-              className="w-full border border-[#d3d3d3] hover:bg-[#f5f3f4] text-[#161a1d] text-xs font-bold py-3 rounded-lg transition-colors cursor-pointer"
-            >
-              Choose professional
-            </button>
-          </div>
-
+            </>
+          )}
         </div>
 
         <p className="text-center text-[#b1a7a6] text-xs font-bold mt-10">
@@ -687,8 +836,8 @@ export default function LandingPage() {
             <div className="space-y-8 font-medium">
               <div>
                 <p className="text-[10px] font-bold text-[#b1a7a6] uppercase tracking-widest mb-1.5">Email Support</p>
-                <a href="mailto:support@dinedash.com" className="text-[#161a1d] text-sm font-bold hover:underline">
-                  support@dinedash.com
+                <a href="mailto:compuniclimited@gmail.com" className="text-[#161a1d] text-sm font-bold hover:underline">
+                  compuniclimited@gmail.com
                 </a>
                 <p className="text-[#b1a7a6] text-xs mt-1">General inquiries, custom API hooks, or billing logs.</p>
               </div>
@@ -697,12 +846,6 @@ export default function LandingPage() {
                 <p className="text-[10px] font-bold text-[#b1a7a6] uppercase tracking-widest mb-1.5">Support Hours</p>
                 <p className="text-[#161a1d] text-sm font-bold">9:00 AM – 7:00 PM IST, Monday to Saturday</p>
                 <p className="text-[#b1a7a6] text-xs mt-1">Our average response turn-around is under three hours.</p>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold text-[#b1a7a6] uppercase tracking-widest mb-1.5">Development Team</p>
-                <p className="text-[#161a1d] text-sm font-bold">DineDash Software Group</p>
-                <p className="text-[#b1a7a6] text-xs mt-1">Independent SaaS product engineers.</p>
               </div>
             </div>
           </div>
@@ -796,21 +939,28 @@ export default function LandingPage() {
             }}
           />
 
-          <div className="flex gap-6 text-xs font-bold">
+          <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-xs font-bold px-4">
             <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <span>•</span>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <span>•</span>
             <a href="#contact" className="hover:text-white transition-colors">Contact</a>
-            <span>•</span>
             <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <span>•</span>
             <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
           </div>
 
           <div className="text-[11px] font-semibold space-y-1 mt-4 text-[#b1a7a6]/70">
-            <p>QR-based restaurant ordering · support@dinedash.com</p>
-            <p>© 2026 DineDash. All rights reserved.</p>
+            <p>QR-based restaurant ordering · compuniclimited@gmail.com</p>
+            <p>© 2026 Compunic Pvt. Limited. All Rights Reserved.</p>
+            <p className="text-[10px] text-[#b1a7a6]/50 mt-2 font-medium">
+              Created with ❤️ in Indore by{' '}
+              <a
+                href="https://compunic.co.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-white transition-colors"
+              >
+                Compunic
+              </a>
+            </p>
           </div>
         </div>
       </footer>

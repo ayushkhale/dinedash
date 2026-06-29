@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prisoners-prefers-desired-seminars.trycloudflare.com';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.107:3005';
 
 // ─── In-memory access token (never persisted to localStorage) ────────────────
 let memoryAccessToken = null;
@@ -81,7 +81,7 @@ async function customFetch(endpoint, options = {}) {
     // Intercept 402 Payment Required — subscription expired
     if (response.status === 402) {
       let payload = {};
-      try { payload = await response.json(); } catch (_) {}
+      try { payload = await response.json(); } catch (_) { }
       if (payload.code === 'SUBSCRIPTION_EXPIRED') {
         window.dispatchEvent(new CustomEvent('subscription-expired'));
       }

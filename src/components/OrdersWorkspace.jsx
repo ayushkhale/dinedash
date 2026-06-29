@@ -295,7 +295,9 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
               {waiterCalls.map((call) => (
                 <div key={call.id} className="bg-white border border-amber-200 rounded px-4 py-3 flex justify-between items-center">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">Table {call.table_number}</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {String(call.table_number).toLowerCase().startsWith('table') ? call.table_number : `Table ${call.table_number}`}
+                    </p>
                     <p className="text-xs text-gray-400 mt-0.5">Order #{call.order_number} · {getMinutesAgo(call.created_at)}</p>
                   </div>
                   <button onClick={() => handleResolveWaiterCall(call.id)} className="dd-btn-primary !py-1.5 !px-3 !text-xs">
@@ -749,7 +751,11 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
                   </div>
                   <div className="mb-3 space-y-0.5 text-xs">
                     <p className="break-words">Orders: {sessionDetails.orders?.map(o => `#${o.order_number}`).join(', ')}</p>
-                    <p>Table: {sessionDetails.table_number || 'N/A'}</p>
+                    <p>
+                      {String(sessionDetails.table_number || '').toLowerCase().startsWith('table')
+                        ? sessionDetails.table_number
+                        : `Table: ${sessionDetails.table_number || 'N/A'}`}
+                    </p>
                     <p className="break-words">Guests: {sessionDetails.orders?.map(o => o.customer_name).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</p>
                     <p>Date: {new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</p>
                   </div>
@@ -802,7 +808,9 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
                     <p>
                       {billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY'
                         ? 'Type: Parcel'
-                        : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`}
+                        : (String(billPreviewOrder.RestaurantTable?.table_number || '').toLowerCase().startsWith('table')
+                            ? billPreviewOrder.RestaurantTable?.table_number
+                            : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`)}
                     </p>
                     <p>Guest: {billPreviewOrder.customer_name}</p>
                     <p>Date: {new Date(billPreviewOrder.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</p>
@@ -862,7 +870,9 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
                     if (printMode === 'session' && sessionDetails) {
                       const orderList = sessionDetails.orders?.map(o => `#${o.order_number}`).join(', ') || ''
                       const guests = sessionDetails.orders?.map(o => o.customer_name).filter((v, i, a) => a.indexOf(v) === i).join(', ') || ''
-                      const typeLabel = `Table: ${sessionDetails.table_number || 'N/A'}`
+                      const typeLabel = String(sessionDetails.table_number || '').toLowerCase().startsWith('table')
+                         ? sessionDetails.table_number
+                         : `Table: ${sessionDetails.table_number || 'N/A'}`
                       text = `${restaurant?.name || user?.name || 'Restaurant'}\nTAX INVOICE (SESSION BILL)\n--------------------------------\nOrders: ${orderList}\n${typeLabel}\nGuests: ${guests}\n--------------------------------\nItem                Qty      Amt\n--------------------------------\n${sessionDetails.combined_items?.map(item => {
                         const name = (item.name_en || '').padEnd(20, ' ').substring(0, 20)
                         const qty = item.quantity.toString().padStart(3, ' ')
@@ -870,7 +880,11 @@ export default function OrdersWorkspace({ orders, fetchOrders, waiterCalls, setW
                         return `${name}${qty}${amt}`
                       }).join('\n') || ''}\n--------------------------------\nTOTAL: ${' '.repeat(14)}Rs.${parseFloat(sessionDetails.totals?.total_amount || 0).toFixed(0)}\n--------------------------------\nThank you for dining with us!\n`
                     } else {
-                      const typeLabel = billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY' ? 'Type: Parcel' : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`
+                      const typeLabel = billPreviewOrder.order_type === 'PARCEL' || billPreviewOrder.order_type === 'TAKEAWAY'
+                         ? 'Type: Parcel'
+                         : (String(billPreviewOrder.RestaurantTable?.table_number || '').toLowerCase().startsWith('table')
+                             ? billPreviewOrder.RestaurantTable?.table_number
+                             : `Table: ${billPreviewOrder.RestaurantTable?.table_number || 'N/A'}`)
                       text = `${restaurant?.name || user?.name || 'Restaurant'}\nTAX INVOICE\n--------------------------------\nOrder: ${billPreviewOrder.order_number.toString().padStart(6, '0')}\n${typeLabel}\nGuest: ${billPreviewOrder.customer_name}\n--------------------------------\nItem                Qty      Amt\n--------------------------------\n${billPreviewOrder.OrderItems?.map(item => {
                         const name = (item.MenuItem?.name_en || '').padEnd(20, ' ').substring(0, 20)
                         const qty = item.quantity.toString().padStart(3, ' ')

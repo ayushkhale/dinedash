@@ -91,10 +91,9 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
           return
         }
         const response = await api.post('/api/tables', { count, is_active: tableForm.is_active })
-        const createdTables = response?.data ?? []
         setIsTableModalOpen(false)
         setTableForm({ table_number: '', is_active: true, count: 1 })
-        setTables((prev) => [...prev, ...createdTables])
+        await fetchTables()
       }
     } catch (err) {
       setError(err.message || 'Failed to save table')
@@ -305,7 +304,11 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
                 <div className={`px-4 py-3 text-white flex items-center justify-between transition-colors duration-150 ${table.session_status === 'OCCUPIED' ? 'bg-[#ba181b]' : 'bg-[#161a1d]'}`}>
                   <div>
                     <p className="text-xs text-white/70 font-medium">Table</p>
-                    <p className="text-3xl font-bold leading-none mt-0.5">{table.table_number}</p>
+                    <p className="text-3xl font-bold leading-none mt-0.5">
+                      {String(table.table_number).toLowerCase().startsWith('table')
+                        ? String(table.table_number).substring(5).trim()
+                        : table.table_number}
+                    </p>
                   </div>
                   <span className="text-xs font-medium bg-white/20 px-2.5 py-1 rounded">Dine In</span>
                 </div>

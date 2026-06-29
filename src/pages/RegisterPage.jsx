@@ -57,6 +57,32 @@ export default function RegisterPage() {
     return () => clearInterval(timer)
   }, [countdown])
 
+  // Automatically detect and pre-fill city and state when pincode is entered (6 digits)
+  useEffect(() => {
+    const fetchLocation = async () => {
+      const pin = details.pincode.trim()
+      if (/^\d{6}$/.test(pin)) {
+        try {
+          const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`)
+          const data = await res.json()
+          if (data && data[0] && data[0].Status === 'Success') {
+            const postOffice = data[0].PostOffice[0]
+            if (postOffice) {
+              setDetails(prev => ({
+                ...prev,
+                city: postOffice.District || postOffice.Division || '',
+                state: postOffice.State || ''
+              }))
+            }
+          }
+        } catch (err) {
+          console.error('Failed to auto-detect location from pincode:', err)
+        }
+      }
+    }
+    fetchLocation()
+  }, [details.pincode])
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
     if (!email) return
@@ -275,7 +301,7 @@ export default function RegisterPage() {
                   setEmail(e.target.value)
                   if (error) setError('')
                 }}
-                placeholder="owner@example.com"
+                placeholder="email@example.com"
                 className="w-full px-4 py-3.5 rounded-xl border-2 border-[#d3d3d3] bg-white text-[#161a1d] placeholder-[#b1a7a6] text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
               />
             </div>
@@ -371,7 +397,7 @@ export default function RegisterPage() {
                     required
                     value={details.owner_name}
                     onChange={handleDetailsChange}
-                    placeholder="John Doe"
+                    placeholder="Enter owner name"
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                   />
                 </div>
@@ -401,33 +427,6 @@ export default function RegisterPage() {
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  
-                  {/* Password Strength Indicator */}
-                  {details.owner_password && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between items-center text-[9px] font-bold">
-                        <span className="text-[#161a1d]/60 uppercase">Strength:</span>
-                        <span style={{
-                          color:
-                            getPasswordStrength(details.owner_password).score === 1
-                              ? '#a4161a'
-                              : getPasswordStrength(details.owner_password).score === 2
-                              ? '#d97706'
-                              : getPasswordStrength(details.owner_password).score === 3
-                              ? '#2563eb'
-                              : '#16a34a'
-                        }}>
-                          {getPasswordStrength(details.owner_password).label}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden flex gap-0.5">
-                        <div className={`h-full flex-1 transition-all duration-300 ${getPasswordStrength(details.owner_password).score >= 1 ? getPasswordStrength(details.owner_password).color : 'bg-gray-200'}`} />
-                        <div className={`h-full flex-1 transition-all duration-300 ${getPasswordStrength(details.owner_password).score >= 2 ? getPasswordStrength(details.owner_password).color : 'bg-gray-200'}`} />
-                        <div className={`h-full flex-1 transition-all duration-300 ${getPasswordStrength(details.owner_password).score >= 3 ? getPasswordStrength(details.owner_password).color : 'bg-gray-200'}`} />
-                        <div className={`h-full flex-1 transition-all duration-300 ${getPasswordStrength(details.owner_password).score >= 4 ? getPasswordStrength(details.owner_password).color : 'bg-gray-200'}`} />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div>
@@ -489,14 +488,14 @@ export default function RegisterPage() {
                     required
                     value={details.restaurant_name}
                     onChange={handleDetailsChange}
-                    placeholder="Dine Dash Bistro"
+                    placeholder="Enter restaurant name"
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="restaurant_slug" className="block text-[10px] font-black text-[#161a1d] uppercase tracking-widest mb-1.5 flex justify-between">
-                    <span>URL Identifier Slug</span>
+                    <span>Username</span>
                     <span className="text-[9px] text-[#b1a7a6] font-semibold lowercase">auto</span>
                   </label>
                   <input
@@ -506,7 +505,7 @@ export default function RegisterPage() {
                     required
                     value={details.restaurant_slug}
                     onChange={handleDetailsChange}
-                    placeholder="dinedash-bistro"
+                    placeholder="username"
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all font-mono"
                   />
                 </div>
@@ -540,41 +539,9 @@ export default function RegisterPage() {
                     required
                     value={details.street_address}
                     onChange={handleDetailsChange}
-                    placeholder="123 Main Street, Ground Floor"
+                    placeholder="Street address"
                     className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                   />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="landmark" className="block text-[10px] font-black text-[#161a1d] uppercase tracking-widest mb-1.5">
-                      Landmark <span className="text-[#b1a7a6] font-normal font-sans">(Optional)</span>
-                    </label>
-                    <input
-                      id="landmark"
-                      name="landmark"
-                      type="text"
-                      value={details.landmark}
-                      onChange={handleDetailsChange}
-                      placeholder="Near Central Park"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="area_locality" className="block text-[10px] font-black text-[#161a1d] uppercase tracking-widest mb-1.5">
-                      Area / Locality <span className="text-[#b1a7a6] font-normal font-sans">(Optional)</span>
-                    </label>
-                    <input
-                      id="area_locality"
-                      name="area_locality"
-                      type="text"
-                      value={details.area_locality}
-                      onChange={handleDetailsChange}
-                      placeholder="Downtown"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
-                    />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -590,7 +557,7 @@ export default function RegisterPage() {
                       maxLength={10}
                       value={details.pincode}
                       onChange={handleDetailsChange}
-                      placeholder="560001"
+                      placeholder="Pincode"
                       className="w-full px-3.5 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                     />
                   </div>
@@ -606,7 +573,7 @@ export default function RegisterPage() {
                       required
                       value={details.city}
                       onChange={handleDetailsChange}
-                      placeholder="Bengaluru"
+                      placeholder="City"
                       className="w-full px-3.5 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                     />
                   </div>
@@ -622,7 +589,7 @@ export default function RegisterPage() {
                       required
                       value={details.state}
                       onChange={handleDetailsChange}
-                      placeholder="Karnataka"
+                      placeholder="State"
                       className="w-full px-3.5 py-3 rounded-lg border-2 border-[#d3d3d3] bg-white text-sm font-semibold focus:outline-none focus:border-[#ba181b] focus:ring-4 focus:ring-[#ba181b]/10 transition-all"
                     />
                   </div>

@@ -163,7 +163,9 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
             <Icons.SignOut />
             Sign out
           </button>
-          <p className="text-center text-[10px] text-gray-400 font-medium">© 2026 DineDash</p>
+          <p className="text-center text-[10px] text-gray-400 font-medium">
+            © 2026 <a href="https://compunic.co.in" target="_blank" rel="noopener noreferrer" className="hover:underline">Compunic Pvt. Limited</a>
+          </p>
         </div>
       </aside>
 
