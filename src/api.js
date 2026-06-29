@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.107:3005';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://dinedash.compunic.co.in';
 
 // ─── In-memory access token (never persisted to localStorage) ────────────────
 let memoryAccessToken = null;
@@ -43,8 +43,8 @@ async function customFetch(endpoint, options = {}) {
   try {
     const response = await fetch(url, options);
 
-    // Intercept 401 (Unauthorized) or 403 (Forbidden) — access token expired
-    const isAuthError = response.status === 401 || response.status === 403;
+    // Intercept 401 (Unauthorized) — access token expired
+    const isAuthError = response.status === 401;
     if (isAuthError && !options._retry && !endpoint.startsWith('/api/public')) {
       if (isRefreshing) {
         // Queue this request while the active refresh is in progress
@@ -255,6 +255,11 @@ export const api = {
   /** Exposes the current in-memory access token (read-only). */
   get accessToken() {
     return memoryAccessToken;
+  },
+
+  /** Exposes the backend base URL. */
+  get baseUrl() {
+    return BASE_URL;
   },
 };
 

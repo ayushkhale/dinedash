@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../api'
 import { handlePrintCard, handlePrintAll } from '../utils/printUtils'
@@ -6,50 +6,50 @@ import { handlePrintCard, handlePrintAll } from '../utils/printUtils'
 // ── SVG Icons ───────────────────────────────────────────────────────
 const IconPlus = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 )
 const IconPrint = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-    <rect x="6" y="14" width="12" height="8"/>
+    <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <rect x="6" y="14" width="12" height="8" />
   </svg>
 )
 const IconRefresh = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
   </svg>
 )
 const IconEdit = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 )
 const IconTrash = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
   </svg>
 )
 const IconTable = () => (
   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
-    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+    <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
   </svg>
 )
 const IconCamera = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-    <circle cx="12" cy="13" r="4"/>
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+    <circle cx="12" cy="13" r="4" />
   </svg>
 )
 const IconAlertCircle = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
   </svg>
 )
 const IconX = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 )
 
@@ -61,6 +61,15 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
   const [tableForm, setTableForm] = useState({ table_number: '', is_active: true, count: 1 })
   const [showDangerZone, setShowDangerZone] = useState(false)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const dangerZoneRef = useRef(null)
+
+  useEffect(() => {
+    if (showDangerZone && dangerZoneRef.current) {
+      setTimeout(() => {
+        dangerZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 60)
+    }
+  }, [showDangerZone])
 
   const isOwner = user?.role === 'OWNER'
 
@@ -241,9 +250,9 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
                 <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex items-center gap-2">
                     {restaurant?.logo_url && (
-                      <img 
-                        src={restaurant.logo_url} 
-                        alt="logo" 
+                      <img
+                        src={restaurant.logo_url}
+                        alt="logo"
                         className="w-7 h-7 rounded object-cover border"
                         style={{ borderColor: 'var(--border)' }}
                       />
@@ -275,7 +284,7 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
                               onClick={() => { handleOpenTable(table.id); setOpenMenuId(null) }}
                               className="w-full text-left px-4 py-2.5 text-xs font-semibold text-[#161a1d] hover:bg-[#f5f3f4] flex items-center gap-2 cursor-pointer"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
                               Seat Guests
                             </button>
                           ) : (
@@ -288,7 +297,7 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
                                   onClick={() => { handleClearTable(table.id); setOpenMenuId(null) }}
                                   className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                                 >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
                                   Done — Free Up Table
                                 </button>
                               )}
@@ -303,11 +312,10 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
                 {/* Table Number */}
                 <div className={`px-4 py-3 text-white flex items-center justify-between transition-colors duration-150 ${table.session_status === 'OCCUPIED' ? 'bg-[#ba181b]' : 'bg-[#161a1d]'}`}>
                   <div>
-                    <p className="text-xs text-white/70 font-medium">Table</p>
-                    <p className="text-3xl font-bold leading-none mt-0.5">
+                    <p className="text-3xl font-bold leading-none mt-0.5"> Table {" "}
                       {String(table.table_number).toLowerCase().startsWith('table')
                         ? String(table.table_number).substring(5).trim()
-                        : table.table_number}
+                        : ' ' + table.table_number}
                     </p>
                   </div>
                   <span className="text-xs font-medium bg-white/20 px-2.5 py-1 rounded">Dine In</span>
@@ -367,9 +375,11 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
         )}
 
         {/* ── Danger Zone ──────────────────────────────────────────── */}
+        {/*
         {tables.length > 0 && (
-          <div className="border border-red-200 rounded overflow-hidden">
+          <div ref={dangerZoneRef} className="border border-red-200 rounded overflow-hidden">
             <button
+              type="button"
               onClick={() => setShowDangerZone(!showDangerZone)}
               className="w-full flex items-center justify-between px-5 py-4 bg-red-50 hover:bg-red-100 transition-colors cursor-pointer"
             >
@@ -382,8 +392,8 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
             {showDangerZone && (
               <div className="px-5 py-4 bg-white border-t border-red-200">
                 <p className="text-sm text-gray-600 mb-4">
-                  This will generate new QR tokens for all <strong>{tables.length} tables</strong>. 
-                  Any previously printed QR stickers or menus will no longer work. 
+                  This will generate new QR tokens for all <strong>{tables.length} tables</strong>.
+                  Any previously printed QR stickers or menus will no longer work.
                   Only do this if your QR codes have been compromised.
                 </p>
                 <button
@@ -397,6 +407,7 @@ export default function TablesWorkspace({ tables, setTables, fetchTables, user, 
             )}
           </div>
         )}
+        */}
       </div>
 
       {/* ── Add / Edit Table Modal ──────────────────────────────────── */}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { io } from 'socket.io-client'
+import api from '../api'
 
 export function useRestaurantSocket({
   user,
@@ -15,12 +16,12 @@ export function useRestaurantSocket({
       return
     }
 
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.104:3005'
+    const BASE_URL = api.baseUrl
     console.info(`[Socket][${ts()}] 🔌 Initialising connection to: ${BASE_URL}`)
     console.info(`[Socket][${ts()}] 👤 userId: ${user.id} | restaurant_id: ${user.restaurant_id}`)
 
     const socketConn = io(BASE_URL, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       query: { userId: user.id },
       reconnection: true,
       reconnectionAttempts: 5,

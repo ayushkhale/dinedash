@@ -170,7 +170,7 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
       </aside>
 
       {/* ── MAIN CONTENT AREA ─────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden min-h-0 h-full">
         {/* Mobile Top Bar */}
         <div className="lg:hidden h-14 bg-white border-b flex items-center justify-between px-4 shrink-0" style={{ borderColor: 'var(--border)' }}>
           <button
@@ -189,7 +189,7 @@ export default function DashboardLayout({ user, restaurant, activeTab, setActive
         </div>
 
         {/* Workspace content wrapper */}
-        <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden" style={{ backgroundColor: 'var(--bg-page)' }}>
+        <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden min-h-0 h-full" style={{ backgroundColor: 'var(--bg-page)' }}>
           {children}
         </main>
       </div>
