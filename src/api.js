@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://dinedash.compunic.co.in';
+// const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://dinedash.compunic.co.in';
+const BASE_URL = 'http://192.168.0.102:3005';
 
 // ─── In-memory access token (never persisted to localStorage) ────────────────
 let memoryAccessToken = null;

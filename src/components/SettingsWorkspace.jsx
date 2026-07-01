@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { Eye, EyeOff } from 'lucide-react'
 
 // ── SVG Icons ───────────────────────────────────────────────────────
 const IconUser = ({ size = 18 }) => (
@@ -89,6 +90,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false)
   const [editingStaff, setEditingStaff] = useState(null)
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
+  const [showStaffPassword, setShowStaffPassword] = useState(false)
 
   useEffect(() => { setError(''); setSuccess('') }, [activeSubTab])
 
@@ -102,30 +104,39 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
         setProfileData(profRes.data)
         setProfileForm({ name: profRes.data.name || '', email: profRes.data.email || '', password: '' })
       }
-      const restRes = await api.get('/api/restaurant')
-      if (restRes?.data) {
-        const rest = restRes.data
-        setRestaurantForm({ name: rest.name || '', phone: rest.phone || '', logo_url: rest.logo_url || '', gst_number: rest.gst_number || '' })
-        setLogoPreview(rest.logo_url || '')
-        setSelectedLogoFile(null)
-        setShouldClearLogo(false)
-        if (rest.Address) {
-          setAddressForm({
-            street_address: rest.Address.street_address || '',
-            landmark: rest.Address.landmark || '',
-            area_locality: rest.Address.area_locality || '',
-            city: rest.Address.city || '',
-            state: rest.Address.state || '',
-            pincode: rest.Address.pincode || ''
-          })
-        }
-      }
       if (isOwner) {
+        const restRes = await api.get('/api/restaurant')
+        if (restRes?.data) {
+          const rest = restRes.data
+          setRestaurantForm({ name: rest.name || '', phone: rest.phone || '', logo_url: rest.logo_url || '', gst_number: rest.gst_number || '' })
+          setLogoPreview(rest.logo_url || '')
+          setSelectedLogoFile(null)
+          setShouldClearLogo(false)
+          if (rest.Address) {
+            setAddressForm({
+              street_address: rest.Address.street_address || '',
+              landmark: rest.Address.landmark || '',
+              area_locality: rest.Address.area_locality || '',
+              city: rest.Address.city || '',
+              state: rest.Address.state || '',
+              pincode: rest.Address.pincode || ''
+            })
+          }
+        }
         const staffRes = await api.get('/api/staff')
         if (staffRes?.data) setStaffList(staffRes.data)
       }
     } catch (err) {
-      setError(err.message || 'Failed to load settings.')
+      const errMsg = err.message || ''
+      const isForbidden =
+        errMsg.toLowerCase().includes('forbidden') ||
+        errMsg.toLowerCase().includes('insufficient') ||
+        errMsg.toLowerCase().includes('permission')
+      if (!isForbidden) {
+        setError(errMsg || 'Failed to load settings.')
+      } else {
+        console.warn('Settings load error suppressed for non-owner:', errMsg)
+      }
     } finally {
       setLoading(false)
     }
@@ -250,6 +261,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
     setEditingStaff(staff)
     setStaffForm(staff ? { name: staff.name || '', email: staff.email || '', password: '' } : { name: '', email: '', password: '' })
     setError('')
+    setShowStaffPassword(false)
     setIsStaffModalOpen(true)
   }
 
@@ -330,8 +342,8 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
 
       {/* ── 1. PROFILE ──────────────────────────────────────────── */}
       {activeSubTab === 'profile' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-          <div className="md:col-span-2 dd-card">
+        <div className={isOwner ? "grid grid-cols-1 md:grid-cols-3 gap-5 items-start" : "max-w-2xl"}>
+          <div className={isOwner ? "md:col-span-2 dd-card" : "dd-card"}>
             <div className="dd-card-header">
               <h3 className="font-semibold text-gray-900">Personal Details</h3>
             </div>
@@ -348,14 +360,7 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
                   onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                   placeholder="john@example.com" className="dd-input" />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
-                  New Password <span className="text-gray-400 font-normal normal-case">— Leave blank to keep current</span>
-                </label>
-                <input type="password" value={profileForm.password}
-                  onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
-                  placeholder="••••••••" className="dd-input" />
-              </div>
+
               <div className="pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
                 <button type="submit" disabled={loading} className="dd-btn-primary">
                   {loading ? 'Saving...' : 'Save Profile'}
@@ -364,30 +369,28 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
             </form>
           </div>
 
-          {/* Account info panel */}
-          <div className="dd-card p-5 space-y-4">
-            <h4 className="font-semibold text-gray-900 text-sm border-b pb-3" style={{ borderColor: 'var(--border)' }}>Account Info</h4>
-            {profileData ? (
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-xs font-medium text-gray-400 mb-0.5">Role</p>
-                  <span className={`dd-badge ${isOwner ? 'bg-[#f5f3f4] text-[#ba181b] border-[#d3d3d3]' : 'bg-[#f5f3f4] text-[#161a1d] border-[#d3d3d3]'}`}>
-                    {profileData.role}
-                  </span>
+          {/* Account info panel (Owner only) */}
+          {isOwner && (
+            <div className="dd-card p-5 space-y-4">
+              <h4 className="font-semibold text-gray-900 text-sm border-b pb-3" style={{ borderColor: 'var(--border)' }}>Account Info</h4>
+              {profileData ? (
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 mb-0.5">Role</p>
+                    <span className={`dd-badge ${isOwner ? 'bg-[#f5f3f4] text-[#ba181b] border-[#d3d3d3]' : 'bg-[#f5f3f4] text-[#161a1d] border-[#d3d3d3]'}`}>
+                      {profileData.role}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 mb-0.5">Member Since</p>
+                    <p className="text-gray-700">{new Date(profileData.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-400 mb-0.5">Member Since</p>
-                  <p className="text-gray-700">{new Date(profileData.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-400 mb-0.5">User ID</p>
-                  <p className="text-xs font-mono text-gray-400 break-all select-all bg-gray-50 border rounded p-1.5" style={{ borderColor: 'var(--border)' }}>{profileData.id}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">Loading...</p>
-            )}
-          </div>
+              ) : (
+                <p className="text-sm text-gray-400">Loading...</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -786,9 +789,21 @@ export default function SettingsWorkspace({ user, onUserUpdate, onRestaurantUpda
                 <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
                   Password {editingStaff && <span className="text-gray-400 font-normal normal-case">— Leave blank to keep current</span>}
                 </label>
-                <input type="password" required={!editingStaff} value={staffForm.password}
-                  onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                  placeholder="••••••••" className="dd-input" />
+                <div className="relative">
+                  <input type={showStaffPassword ? "text" : "password"} required={!editingStaff} value={staffForm.password}
+                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                    placeholder="••••••••" className="dd-input pr-10" />
+                  <button
+                    type="button"
+                    onClick={() => setShowStaffPassword(!showStaffPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showStaffPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Requirements: Minimum 6 characters.
+                </p>
               </div>
               <div className="flex gap-3 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
                 <button type="button" onClick={() => setIsStaffModalOpen(false)} className="dd-btn-secondary flex-1 justify-center">Cancel</button>
